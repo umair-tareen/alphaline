@@ -7,7 +7,7 @@ import { getBars, providerInfo } from './lib/bars.js';
 import { listDrawings, removeDrawing } from './lib/store.js';
 import { autoMark, levelsFor, getState, readBrief, readRules } from './lib/desk.js';
 import { toChartTime } from './lib/time.js';
-import { computeIndicators, CONFIG_FILE, CUSTOM_DIR } from './lib/indicators.js';
+import { computeIndicators, loadIndicators, saveIndicators, CONFIG_FILE, CUSTOM_DIR } from './lib/indicators.js';
 import { acceptDrawing } from './lib/store.js';
 
 ensureDirs();
@@ -52,6 +52,15 @@ const routes = {
     const ind = await computeIndicators(r.bars);
     const shift = pts => pts.map(p => ({ ...p, time: toChartTime(p.time) }));
     send(res, 200, { ...ind, lines: ind.lines.map(l => ({ ...l, points: shift(l.points) })), volume: ind.volume && { ...ind.volume, avg: shift(ind.volume.avg) } });
+  },
+  'GET /api/indicators/config': (_q, res) => send(res, 200, loadIndicators()),
+  'POST /api/indicators/toggle': (q, res) => {
+    const list = loadIndicators();
+    const item = list.find(x => x.id === q.get('id'));
+    if (!item) return send(res, 404, { error: 'No indicator ' + q.get('id') });
+    item.enabled = q.get('enabled') === 'true';
+    saveIndicators(list);
+    send(res, 200, item);
   },
   'POST /api/drawings/accept': (q, res) => send(res, 200, { accepted: acceptDrawing(q.get('symbol'), q.get('id')) }),
   'GET /api/drawings': (q, res) => send(res, 200, listDrawings(q.get('symbol') || 'SPY').map(chartDrawing)),

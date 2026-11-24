@@ -3,32 +3,34 @@
     "id": "ema9",
     "type": "ema",
     "length": 9,
-    "color": "#38bdf8",
+    "color": "#5eb1ef",
     "width": 2,
-    "enabled": true
+    "enabled": true,
+    "label": "9 EMA"
   },
   {
     "id": "ema21",
     "type": "ema",
     "length": 21,
-    "color": "#f0b429",
+    "color": "#e8a33d",
     "width": 2,
-    "enabled": true
+    "enabled": true,
+    "label": "21 EMA"
   },
   {
     "id": "volume",
     "type": "volume",
     "avgLength": 20,
     "highlightAbove": true,
-    "highlightColor": "#f2f5f4",
+    "highlightColor": "#ededed",
     "showAverage": true,
-    "avgColor": "#f2f5f4",
+    "avgColor": "#a1a1a6",
     "enabled": true
   },
   {
     "id": "vwap",
     "type": "vwap",
-    "color": "#c084fc",
+    "color": "#a1a1a6",
     "width": 1,
     "enabled": false
   },
@@ -36,16 +38,17 @@
     "id": "sma50",
     "type": "sma",
     "length": 50,
-    "color": "#94a3b8",
+    "color": "#85858b",
     "width": 1,
-    "enabled": false
+    "enabled": false,
+    "label": "50 SMA"
   },
   {
     "id": "bb20",
     "type": "bbands",
     "length": 20,
     "mult": 2,
-    "color": "#64748b",
+    "color": "#85858b",
     "width": 1,
     "enabled": false
   },
@@ -56,7 +59,7 @@
     "params": {
       "length": 14
     },
-    "color": "#a78bfa",
+    "color": "#a1a1a6",
     "width": 1,
     "enabled": false
   }

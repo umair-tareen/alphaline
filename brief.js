@@ -12,7 +12,7 @@ const lines = [`# Morning facts · ${todayET()}`, '', '_Calculated by code from 
 
 const news = await getNews(cfg.watchlist);
 const todays = news.calendar.filter(e => e.today);
-lines.push('## Calendar today (ET)');
+lines.push('## Scheduled news today (New York time)');
 lines.push(todays.length ? todays.map(e => `- **${e.timeET}** ${e.event} (${e.impact}${e.forecast ? ', forecast ' + e.forecast : ''}${e.previous ? ', previous ' + e.previous : ''})`).join('\n') : '- No high or medium impact US events today.');
 lines.push('');
 
@@ -21,11 +21,11 @@ for (const s of cfg.watchlist) {
   try {
     const { levels: L } = await autoMark(s);
     const parts = [];
-    if (L.prior) parts.push(`PDH ${L.prior.high} · PDL ${L.prior.low} · PDC ${L.prior.close}`);
-    if (L.premarket) parts.push(`PMH ${L.premarket.high} · PML ${L.premarket.low}`);
-    if (L.gap) parts.push(`gap ${L.gap.direction} ${L.gap.size} (${L.gap.pct}%)${L.gap.filled ? ', filled' : ''}`);
-    if (L.atr) parts.push(`ATR ${L.atr}`);
-    lines.push(`- **${L.symbol}** last ${L.last}: ${parts.join(' · ')}`);
+    if (L.prior) parts.push(`yesterday's high ${L.prior.high}, low ${L.prior.low}, close ${L.prior.close}`);
+    if (L.premarket) parts.push(`pre-market high ${L.premarket.high}, low ${L.premarket.low}`);
+    if (L.gap) parts.push(`gap ${L.gap.direction} of ${Math.abs(L.gap.size)} (${Math.abs(L.gap.pct)}%)${L.gap.filled ? ', since filled' : ', not filled'}`);
+    if (L.atr) parts.push(`moves about ${L.atr} on a normal day`);
+    lines.push(`- **${L.symbol}** at ${L.last}: ${parts.join('; ')}`);
   } catch (e) { lines.push(`- **${s}**: could not load (${e.message})`); }
 }
 lines.push('');
