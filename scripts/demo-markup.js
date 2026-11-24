@@ -13,6 +13,7 @@ await call('chart_draw_level', { symbol: 'SPY', price: L.vwap, label: 'VWAP', ki
 await call('chart_draw_zone', { symbol: 'SPY', top: L.gap.to, bottom: L.gap.from, from: L.gap.time, label: 'Open gap +' + L.gap.size + ' unfilled', kind: 'gap' });
 const near = L.fvgs.filter(f => Math.abs((f.top + f.bottom) / 2 - L.last) < L.atr);
 for (const f of near.slice(-2)) await call('chart_draw_zone', { symbol: 'SPY', top: f.top, bottom: f.bottom, from: f.from, label: f.dir === 'bull' ? '15m FVG below' : '15m FVG above', kind: f.dir === 'bull' ? 'fvg-bull' : 'fvg-bear' });
+await call('chart_draw_zone', { symbol: 'SPY', top: L.prior.high + 2, bottom: L.prior.high - 1, from: L.gap.time, label: 'Retest area?', kind: 'support', suggest: true });
 await call('chart_add_note', { symbol: 'SPY', text: 'Opened above PDH', time: L.gap.time });
 console.log(JSON.stringify({ near: near.length, L: { last: L.last, atr: L.atr } }));
 await c.close();

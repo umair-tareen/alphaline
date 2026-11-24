@@ -1,0 +1,63 @@
+[
+  {
+    "id": "ema9",
+    "type": "ema",
+    "length": 9,
+    "color": "#38bdf8",
+    "width": 2,
+    "enabled": true
+  },
+  {
+    "id": "ema21",
+    "type": "ema",
+    "length": 21,
+    "color": "#f0b429",
+    "width": 2,
+    "enabled": true
+  },
+  {
+    "id": "volume",
+    "type": "volume",
+    "avgLength": 20,
+    "highlightAbove": true,
+    "highlightColor": "#f2f5f4",
+    "showAverage": true,
+    "avgColor": "#f2f5f4",
+    "enabled": true
+  },
+  {
+    "id": "vwap",
+    "type": "vwap",
+    "color": "#c084fc",
+    "width": 1,
+    "enabled": false
+  },
+  {
+    "id": "sma50",
+    "type": "sma",
+    "length": 50,
+    "color": "#94a3b8",
+    "width": 1,
+    "enabled": false
+  },
+  {
+    "id": "bb20",
+    "type": "bbands",
+    "length": 20,
+    "mult": 2,
+    "color": "#64748b",
+    "width": 1,
+    "enabled": false
+  },
+  {
+    "id": "rsi14",
+    "type": "custom",
+    "file": "rsi",
+    "params": {
+      "length": 14
+    },
+    "color": "#a78bfa",
+    "width": 1,
+    "enabled": false
+  }
+]
