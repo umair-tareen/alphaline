@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "chartdesk": {
+      "command": "node",
+      "args": [
+        "./mcp.js"
+      ]
+    }
+  }
+}

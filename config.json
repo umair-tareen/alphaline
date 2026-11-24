@@ -1,0 +1,35 @@
+{
+  "provider": "demo",
+  "watchlist": [
+    "SPY",
+    "QQQ",
+    "IWM"
+  ],
+  "port": 4321,
+  "news": {
+    "feeds": [
+      {
+        "name": "CNBC Markets",
+        "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258"
+      },
+      {
+        "name": "MarketWatch",
+        "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories"
+      },
+      {
+        "name": "Federal Reserve",
+        "url": "https://www.federalreserve.gov/feeds/press_all.xml"
+      }
+    ],
+    "symbolFeed": "https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US",
+    "maxHeadlines": 30,
+    "calendarUrl": "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
+    "calendarCountries": [
+      "USD"
+    ],
+    "calendarImpact": [
+      "High",
+      "Medium"
+    ]
+  }
+}

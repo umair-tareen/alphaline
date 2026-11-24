@@ -1,0 +1,22 @@
+{
+  "name": "atp-chart-desk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A free local chart desk your own Claude or Codex can mark up: levels, gaps, zones and a morning brief.",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "mcp": "node mcp.js",
+    "brief": "node brief.js",
+    "schwab-login": "node scripts/schwab-login.js",
+    "test": "node scripts/selftest.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "lightweight-charts": "4.2.3",
+    "zod": "3.25.76"
+  }
+}

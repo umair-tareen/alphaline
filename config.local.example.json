@@ -1,0 +1,12 @@
+{
+  "alpaca": {
+    "keyId": "PASTE_KEY_ID",
+    "secretKey": "PASTE_SECRET",
+    "feed": "iex"
+  },
+  "schwab": {
+    "appKey": "PASTE_APP_KEY",
+    "appSecret": "PASTE_APP_SECRET",
+    "redirectUri": "https://127.0.0.1"
+  }
+}
