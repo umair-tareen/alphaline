@@ -218,6 +218,8 @@ const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).
 const MAIN = 'candle_pane', VOLP = 'vol_pane', LOWP = 'lower_pane';
 const fontStack = () => getComputedStyle(document.body).fontFamily;
 const chart = klinecharts.init('chart', { timezone: 'America/New_York', locale: 'en-US' });
+// KLineChart doesn't watch its box, so tell it whenever the layout changes size.
+new ResizeObserver(() => chart.resize()).observe(document.getElementById('chart'));
 const PERIOD = { '5m': { type: 'minute', span: 5 }, '15m': { type: 'minute', span: 15 }, '1h': { type: 'hour', span: 1 }, '1d': { type: 'day', span: 1 } };
 const toK = b => ({ timestamp: b.time * 1000, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume });
 let pushBar = null;
@@ -553,6 +555,7 @@ async function open(symbol, tf) {
     if (sym?.ticker === S.symbol && per?.type === PERIOD[S.tf].type && per?.span === PERIOD[S.tf].span) chart.resetData();
     else { chart.setSymbol({ ticker: S.symbol, pricePrecision: 2, volumePrecision: 0 }); chart.setPeriod(PERIOD[S.tf]); }
     chart.setBarSpace(S.tf === '1d' ? 7 : 6);
+    requestAnimationFrame(() => { chart.resize(); chart.scrollToRealTime(); });
     await Promise.all([loadIndicators(), loadDrawings(), api('/api/levels?symbol=' + encodeURIComponent(S.symbol)).then(L => (S.levels = L)).catch(() => (S.levels = null))]);
     renderQuote(); renderTab();
   } catch (e) { showErr(e.message); }
