@@ -4,7 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { ensureDirs, loadConfig } from './lib/config.js';
-import { getBars, providerInfo } from './lib/bars.js';
+import { getBars, providerInfo, listProviders } from './lib/bars.js';
 import { addDrawing, listDrawings, removeDrawing, clearDrawings } from './lib/store.js';
 import { autoMark, levelsFor, setFocus, readBrief, saveBrief, readRules } from './lib/desk.js';
 import { getNews } from './lib/news.js';
@@ -12,7 +12,7 @@ import { fmtET, parseTime } from './lib/time.js';
 import { loadIndicators, saveIndicators, CUSTOM_DIR } from './lib/indicators.js';
 
 ensureDirs();
-const server = new McpServer({ name: 'atp-chart-desk', version: '0.1.0' });
+const server = new McpServer({ name: 'alphaline', version: '0.1.0' });
 const text = v => ({ content: [{ type: 'text', text: typeof v === 'string' ? v : JSON.stringify(v, null, 2) }] });
 const wrap = fn => async args => { try { return text(await fn(args)); } catch (e) { return { ...text('Error: ' + e.message), isError: true }; } };
 const Sym = z.string().describe('Ticker, e.g. SPY');
@@ -67,7 +67,8 @@ server.tool('indicator_list', 'Indicators on the chart (indicators.json) and the
   }));
 
 server.tool('indicator_set', 'Add or change an indicator (the chart updates live). Built-in types: ema, sma (length), vwap, bbands (length, mult), volume (avgLength, highlightAbove, highlightColor). For anything else write indicators/<name>.js (see indicators/rsi.js) and use type "custom" with file "<name>".',
-  { id: z.string().regex(/^[a-zA-Z0-9_-]+$/).describe('e.g. ema50'), type: z.enum(['ema', 'sma', 'vwap', 'bbands', 'volume', 'custom']).optional(),
+  { id: z.string().regex(/^[a-zA-Z0-9_-]+$/).describe('e.g. ema50'), type: z.enum(['ema', 'sma', 'vwap', 'bbands', 'volume', 'profile', 'custom']).optional(),
+    rows: z.number().int().min(8).max(80).optional(), valueArea: z.number().min(0.5).max(0.95).optional(),
     length: z.number().int().min(1).max(500).optional(), mult: z.number().optional(), color: z.string().optional(), width: z.number().int().min(1).max(4).optional(),
     enabled: z.boolean().optional(), pane: z.enum(['price', 'lower']).optional(), label: z.string().optional(), file: z.string().optional(), params: z.record(z.any()).optional(),
     avgLength: z.number().int().optional(), highlightAbove: z.boolean().optional(), highlightColor: z.string().optional() },
@@ -83,6 +84,9 @@ server.tool('indicator_set', 'Add or change an indicator (the chart updates live
 
 server.tool('indicator_remove', 'Remove an indicator from the chart (use indicator_set enabled:false to just hide it).', { id: z.string() },
   wrap(({ id }) => { const list = loadIndicators(); const left = list.filter(x => x.id !== id); saveIndicators(left); return { removed: list.length - left.length }; }));
+
+server.tool('data_sources', 'Data sources available (built-in, CSV imports and plug-ins in providers/), which one is active, and which need setup.', {},
+  wrap(async () => ({ active: providerInfo(), sources: await listProviders() })));
 
 server.tool('news_get', 'Recent market headlines and this week\'s US economic calendar (high/medium impact).',
   { symbols: z.array(z.string()).optional().describe('Also pull headlines for these tickers. Default: the watchlist') },

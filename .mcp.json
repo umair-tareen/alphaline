@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "chartdesk": {
+    "alphaline": {
       "command": "node",
       "args": [
         "./mcp.js"

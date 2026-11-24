@@ -1,9 +1,9 @@
 {
-  "name": "atp-chart-desk",
+  "name": "alphaline",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A free local chart desk your own Claude or Codex can mark up: levels, gaps, zones and a morning brief.",
+  "description": "Free, local trading charts your own Claude or Codex can mark up: levels, gaps, zones, indicators and a morning brief.",
   "engines": {
     "node": ">=18.17"
   },
@@ -16,7 +16,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",
-    "lightweight-charts": "4.2.3",
+    "klinecharts": "10.1.0",
     "zod": "3.25.76"
-  }
+  },
+  "license": "MIT"
 }

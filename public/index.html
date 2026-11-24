@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ATP Chart Desk</title>
+<title>Alphaline</title>
 <style>
 :root{
   --deep:#fafafa;--bg:#ffffff;--card:#ffffff;--raised:#f4f4f5;--line:rgba(23,23,23,.08);--line2:rgba(23,23,23,.14);
@@ -142,12 +142,13 @@ aside .seg button{flex:1}
 <body>
 <div class="app">
   <header class="bar">
-    <div class="mark"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="7" width="3" height="8" rx="1" fill="var(--fg2)"/><rect x="8.5" y="3" width="3" height="11" rx="1" fill="var(--accent)"/><rect x="14" y="9" width="3" height="7" rx="1" fill="var(--fg2)"/></svg><span>Chart Desk</span></div>
+    <div class="mark"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="7" width="3" height="8" rx="1" fill="var(--fg2)"/><rect x="8.5" y="3" width="3" height="11" rx="1" fill="var(--accent)"/><rect x="14" y="9" width="3" height="7" rx="1" fill="var(--fg2)"/></svg><span>Alphaline</span></div>
     <label class="search"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 9.5 13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input id="sym" placeholder="Symbol" spellcheck="false" autocomplete="off" aria-label="Symbol"></label>
     <div class="seg" id="watch" role="group" aria-label="Watchlist"></div>
     <div class="seg" id="tfs" role="group" aria-label="Candle size"></div>
     <div class="spacer"></div>
     <span class="feed" id="feed"></span>
+    <button class="ghost" id="dataBtn">Data</button>
     <button class="ghost" id="indBtn">Indicators</button>
     <button class="ghost" id="helpBtn">How to read this</button>
     <button class="primary" id="auto">Mark key levels</button>
@@ -163,7 +164,7 @@ aside .seg button{flex:1}
       </div>
       <div class="chartbox"><div id="chart"></div><canvas id="zones"></canvas><div class="err" id="err" hidden></div>
         <div class="welcome" id="welcome" hidden>
-          <h2>Welcome to your Chart Desk</h2>
+          <h2>Welcome to Alphaline</h2>
           <p>Everything here runs on your computer. Three steps to start:</p>
           <ol>
             <li><span class="step">1</span><span><b>Pick a symbol</b>Type a ticker like SPY at the top.</span></li>
@@ -182,7 +183,7 @@ aside .seg button{flex:1}
 </div>
 <div class="scrim" id="sheet" hidden><div class="sheet" id="sheetBody" role="dialog" aria-modal="true"></div></div>
 
-<script src="/vendor/lightweight-charts.js"></script>
+<script src="/vendor/klinecharts.js"></script>
 <script>
 // Plain-English names for everything the desk can draw.
 const KINDS = {
@@ -203,6 +204,7 @@ const IND_HELP = {
   vwap: () => 'The average price paid today, weighted by how much traded.',
   bbands: () => 'A band around the 20 average. Wide bands mean price is moving a lot.',
   volume: l => 'How many shares traded. White bars were busier than the last ' + l + ' candles on average.',
+  profile: () => 'How much traded at each price on the screen. The longest bar is where most trading happened.',
   custom: () => 'A custom indicator from the indicators folder.',
 };
 const $ = id => document.getElementById(id);
@@ -213,22 +215,63 @@ const S = { symbol: 'SPY', tf: '5m', bars: [], drawings: [], levels: null, lines
 const TF_LABEL = { '5m': '5 min', '15m': '15 min', '1h': '1 hour', '1d': '1 day' };
 
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const chart = LightweightCharts.createChart($('chart'), { autoSize: true, crosshair: { mode: 0 }, timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 6 }, handleScale: { axisPressedMouseMove: true } });
-const candles = chart.addCandlestickSeries({ borderVisible: false, priceLineVisible: false });
-const volume = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol', lastValueVisible: false, priceLineVisible: false });
-const volAvg = chart.addLineSeries({ priceScaleId: 'vol', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.86, bottom: 0 } });
-const IND = new Map();
+const MAIN = 'candle_pane', VOLP = 'vol_pane', LOWP = 'lower_pane';
+const fontStack = () => getComputedStyle(document.body).fontFamily;
+const chart = klinecharts.init('chart', { timezone: 'America/New_York', locale: 'en-US' });
+const PERIOD = { '5m': { type: 'minute', span: 5 }, '15m': { type: 'minute', span: 15 }, '1h': { type: 'hour', span: 1 }, '1d': { type: 'day', span: 1 } };
+const toK = b => ({ timestamp: b.time * 1000, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume });
+let pushBar = null;
+chart.setDataLoader({
+  getBars: ({ type, callback }) => callback(type === 'init' ? S.bars.map(toK) : [], false),
+  subscribeBar: ({ callback }) => { pushBar = callback; },
+  unsubscribeBar: () => { pushBar = null; },
+});
+
+// Volume, with bars brighter than the recent average shown in white.
+klinecharts.registerIndicator({
+  name: 'DESKVOL', shortName: 'Volume', series: 'volume', precision: 0, shouldFormatBigNumber: true, calcParams: [20],
+  figures: [
+    { key: 'vol', title: '', type: 'bar', baseValue: 0, styles: ({ data }) => ({ color: data.current?.hot ? css('--vol-hot') : css('--vol') }) },
+    { key: 'avg', title: '', type: 'line' },
+  ],
+  calc: (list, ind) => {
+    const n = ind.calcParams[0] || 20, hl = ind.extendData?.highlight !== false;
+    let sum = 0;
+    return list.map((d, i) => {
+      sum += d.volume || 0; if (i >= n) sum -= list[i - n].volume || 0;
+      const avg = i >= n - 1 ? sum / n : null;
+      return { vol: d.volume || 0, avg: ind.extendData?.showAverage === false ? null : avg, hot: hl && avg != null && d.volume > avg };
+    });
+  },
+});
+// Lines the server calculates (EMAs, VWAP, custom files) are plotted as simple line indicators.
+function lineIndicator(key) {
+  const name = 'DESK_' + key.replace(/[^a-zA-Z0-9_]/g, '_');
+  if (!klinecharts.getSupportedIndicators().includes(name)) klinecharts.registerIndicator({
+    name, figures: [{ key: 'v', title: '', type: 'line' }],
+    calc: (list, ind) => list.map(d => ({ v: ind.extendData?.[d.timestamp] ?? null })),
+  });
+  return name;
+}
 
 function applyTheme() {
-  chart.applyOptions({
-    layout: { background: { type: 'solid', color: css('--bg') }, textColor: css('--mute'), fontFamily: getComputedStyle(document.body).fontFamily, fontSize: 11 },
-    grid: { vertLines: { color: css('--grid') }, horzLines: { color: css('--grid') } },
-    rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false },
-    crosshair: { vertLine: { color: css('--line2'), labelBackgroundColor: css('--raised') }, horzLine: { color: css('--line2'), labelBackgroundColor: css('--raised') } },
+  const text = { color: css('--mute'), family: fontStack(), size: 11 };
+  const xhair = { line: { color: css('--line2'), style: 'dashed' }, text: { color: css('--fg'), backgroundColor: css('--raised'), borderColor: css('--line2'), family: fontStack(), size: 11 } };
+  chart.setStyles({
+    grid: { horizontal: { color: css('--grid') }, vertical: { color: css('--grid') } },
+    candle: {
+      type: 'candle_solid',
+      bar: { upColor: css('--up'), downColor: css('--down'), noChangeColor: css('--mute'), upBorderColor: css('--up'), downBorderColor: css('--down'), noChangeBorderColor: css('--mute'), upWickColor: css('--up'), downWickColor: css('--down'), noChangeWickColor: css('--mute') },
+      priceMark: { high: { show: false }, low: { show: false }, last: { show: true, upColor: css('--up'), downColor: css('--down'), noChangeColor: css('--mute'), line: { show: true, style: 'dashed', size: 1 }, text: { family: fontStack(), size: 11, weight: '600' } } },
+      tooltip: { showRule: 'none' },
+    },
+    indicator: { tooltip: { showRule: 'none' }, lastValueMark: { show: false } },
+    xAxis: { axisLine: { show: false }, tickLine: { show: false }, tickText: text },
+    yAxis: { axisLine: { show: false }, tickLine: { show: false }, tickText: text },
+    separator: { size: 1, color: css('--line'), activeBackgroundColor: css('--raised') },
+    crosshair: { horizontal: xhair, vertical: xhair },
   });
-  candles.applyOptions({ upColor: css('--up'), downColor: css('--down'), wickUpColor: css('--up'), wickDownColor: css('--down') });
-  if (S.bars.length) { renderVolume(); loadDrawings(); }
+  if (S.bars.length) loadIndicators().catch(() => {});
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 
@@ -242,10 +285,11 @@ function colorOf(d) {
   return css('--fg2');
 }
 const nameOf = d => (d.source === 'ai' ? d.label : (KINDS[d.kind]?.[0] || d.label)) || 'Mark';
-const visible = d => !S.hidden.has(d.source === 'ai' ? 'ai' : d.kind?.replace(/-(high|low|close|bull|bear)$/, '')) ;
+const visible = d => !S.hidden.has(d.source === 'ai' ? 'ai' : d.kind?.replace(/-(high|low|close|bull|bear)$/, ''));
 
 const api = async (path, opts) => { const r = await fetch(path, opts); const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j; };
 function showErr(m) { $('err').hidden = !m; $('err').textContent = m || ''; }
+addEventListener('error', e => showErr('Something went wrong: ' + e.message));
 function idxAt(t) { const b = S.bars; if (t == null || !b.length) return 0; let lo = 0, hi = b.length - 1; if (t > b[hi].time) return hi; while (lo < hi) { const m = (lo + hi) >> 1; if (b[m].time < t) lo = m + 1; else hi = m; } return lo; }
 
 function renderQuote(bar) {
@@ -259,80 +303,124 @@ function renderQuote(bar) {
     $('qChg').textContent = (ch >= 0 ? '+' : '−') + fmt(Math.abs(ch)) + ' (' + (ch >= 0 ? '+' : '−') + Math.abs(pct).toFixed(2) + '%) since yesterday’s close';
   } else $('qChg').textContent = '';
   const b = bar || last;
-  $('ohlc').innerHTML = b ? ['Open', 'High', 'Low', 'Close'].map(k => '<span>' + k + ' <b>' + fmt(b[k.toLowerCase()]) + '</b></span>').join('') + '<span>Volume <b>' + Number(b.volume).toLocaleString('en-US') + '</b></span>' : '';
+  $('ohlc').innerHTML = b ? ['Open', 'High', 'Low', 'Close'].map(k => '<span>' + k + ' <b>' + fmt(b[k.toLowerCase()]) + '</b></span>').join('') + '<span>Volume <b>' + Number(b.volume || 0).toLocaleString('en-US') + '</b></span>' : '';
 }
-chart.subscribeCrosshairMove(p => { const d = p && p.time ? S.bars[idxAt(p.time)] : null; renderQuote(d && d.time === p.time ? d : null); });
-
-function renderVolume() {
-  const v = S.ind?.volume;
-  if (!v) { volume.setData([]); volAvg.setData([]); return; }
-  const avg = new Map(v.avg.map(p => [p.time, p.value]));
-  volume.setData(S.bars.map(b => { const a = avg.get(b.time); return { time: b.time, value: b.volume, color: v.highlightAbove && a && b.volume > a ? css('--vol-hot') : css('--vol') }; }));
-  volAvg.applyOptions({ color: css('--mute'), visible: v.showAverage !== false });
-  volAvg.setData(v.avg);
-}
+chart.subscribeAction('onCrosshairChange', c => renderQuote(c && c.kLineData ? c.kLineData : null));
 
 async function loadIndicators() {
   S.ind = await api('/api/indicators?symbol=' + encodeURIComponent(S.symbol) + '&tf=' + S.tf);
-  renderVolume();
-  const seen = new Set();
+  for (const i of chart.getIndicators()) chart.removeIndicator({ id: i.id });
   const themed = l => l.key === 'ema9' ? css('--ema9') : l.key === 'ema21' ? css('--ema21') : l.color;
   for (const l of S.ind.lines) {
-    seen.add(l.key);
-    let s = IND.get(l.key);
-    const opts = { color: themed(l), lineWidth: l.width || 1, priceScaleId: l.pane === 'lower' ? 'lower' : 'right' };
-    if (!s) { s = chart.addLineSeries({ ...opts, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }); IND.set(l.key, s); } else s.applyOptions(opts);
-    s.setData(l.points);
-    for (const g of s._g || []) s.removePriceLine(g);
-    s._g = (l.guides || []).map(price => s.createPriceLine({ price, color: css('--line2'), lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
+    const ext = {}; for (const p of l.points) ext[p.time * 1000] = p.value;
+    chart.createIndicator({ name: lineIndicator(l.key), id: 'L_' + l.key.replace(/[^a-zA-Z0-9_]/g, '_'), paneId: l.pane === 'lower' ? LOWP : MAIN, extendData: ext, styles: { lines: [{ color: themed(l), size: l.width || 1, style: 'solid', smooth: false }] } }, true);
   }
-  for (const [k, s] of IND) if (!seen.has(k)) { chart.removeSeries(s); IND.delete(k); }
-  const lower = S.ind.lines.some(l => l.pane === 'lower');
-  candles.priceScale().applyOptions({ scaleMargins: lower ? { top: 0.06, bottom: 0.38 } : { top: 0.06, bottom: 0.2 } });
-  if (lower) chart.priceScale('lower').applyOptions({ scaleMargins: { top: 0.66, bottom: 0.18 } });
+  const v = S.ind.volume;
+  if (v) chart.createIndicator({ name: 'DESKVOL', id: 'VOL', paneId: VOLP, calcParams: [v.avgLength || 20], extendData: { highlight: v.highlightAbove !== false, showAverage: v.showAverage !== false }, styles: { lines: [{ color: css('--mute'), size: 1, style: 'solid' }] } }, false);
+  chart.setPaneOptions({ id: VOLP, height: 72, minHeight: 48, dragEnabled: true });
+  if (S.ind.lines.some(l => l.pane === 'lower')) chart.setPaneOptions({ id: LOWP, height: 110, minHeight: 60, dragEnabled: true });
+  S.guides = S.ind.lines.filter(l => l.pane === 'lower' && l.guides?.length).flatMap(l => l.guides);
   const items = S.ind.lines.filter(l => l.label).map(l => '<span><i style="background:' + esc(themed(l)) + '"></i>' + esc(l.label) + '</span>');
-  if (S.ind.volume) items.push('<span><i class="bar" style="background:' + esc(css('--vol-hot')) + '"></i>Busier than usual</span>');
+  if (v) items.push('<span><i class="bar" style="background:' + esc(css('--vol-hot')) + '"></i>Busier than usual</span>');
+  if (S.ind.overlays?.some(o => o.type === 'profile')) items.push('<span><i class="bar" style="background:' + esc(css('--fg2')) + '"></i>Volume profile</span>');
   $('legend').innerHTML = items.join('');
   if (S.ind.errors.length) showErr('An indicator could not be drawn: ' + S.ind.errors.join('; '));
 }
 
 async function loadDrawings() {
   S.drawings = await api('/api/drawings?symbol=' + encodeURIComponent(S.symbol));
-  for (const l of S.lines) candles.removePriceLine(l);
-  S.lines = S.drawings.filter(d => d.type === 'level' && visible(d)).map(d => {
-    const sg = d.status === 'suggested';
-    return candles.createPriceLine({ price: d.price, color: colorOf(d), lineWidth: d.source === 'ai' && !sg ? 2 : 1, lineStyle: sg ? 1 : d.kind === 'prior-close' ? 2 : 0, axisLabelVisible: true, title: (sg ? 'Suggested: ' : '') + (d.source === 'ai' ? d.label : (KINDS[d.kind]?.[0] || d.label)) });
-  });
-  const markers = S.drawings.filter(d => d.type === 'note' && visible(d) && S.bars.length).map(d => ({ time: S.bars[idxAt(d.time)].time, position: d.position === 'below' ? 'belowBar' : 'aboveBar', color: css('--accent'), shape: 'circle', text: d.label })).sort((a, b) => a.time - b.time);
-  candles.setMarkers(markers);
   if (S.tab === 'marks') renderMarks();
 }
 
-// Areas are painted on a canvas that follows every scroll and zoom.
+// Volume profile: volume at each price for the candles on screen, drawn from the right edge.
+function drawProfile(L, T, R2, B) {
+  const p = S.ind?.overlays?.find(o => o.type === 'profile'); if (!p || !S.bars.length) return;
+  const vr = chart.getVisibleRange(); const from = Math.max(0, Math.floor(vr.from)), to = Math.min(S.bars.length, Math.ceil(vr.to));
+  const bars = S.bars.slice(from, to); if (bars.length < 2) return;
+  const lo = Math.min(...bars.map(b => b.low)), hi = Math.max(...bars.map(b => b.high)); if (hi <= lo) return;
+  const n = p.rows, step = (hi - lo) / n, rows = new Array(n).fill(0);
+  for (const b of bars) {
+    const a = Math.max(0, Math.floor((b.low - lo) / step)), z = Math.min(n - 1, Math.floor((b.high - lo) / step));
+    for (let i = a; i <= z; i++) rows[i] += (b.volume || 0) / (z - a + 1);
+  }
+  const max = Math.max(...rows); if (!max) return;
+  const poc = rows.indexOf(max), total = rows.reduce((s, v) => s + v, 0);
+  let inA = new Set([poc]), acc = max, up = poc + 1, dn = poc - 1;
+  while (acc < total * p.valueArea && (up < n || dn >= 0)) { const u = up < n ? rows[up] : -1, d = dn >= 0 ? rows[dn] : -1; if (u >= d) { inA.add(up); acc += u; up++; } else { inA.add(dn); acc += d; dn--; } }
+  const width = (R2 - L) * 0.22, base = p.color || css('--fg2');
+  for (let i = 0; i < n; i++) {
+    const y1 = px({ value: lo + (i + 1) * step })?.y, y2 = px({ value: lo + i * step })?.y; if (y1 == null || y2 == null) continue;
+    const w = (rows[i] / max) * width;
+    ctx.fillStyle = i === poc ? hexA(css('--accent'), 0.45) : hexA(base, inA.has(i) ? 0.22 : 0.1);
+    ctx.fillRect(R2 - w, Math.min(y1, y2) + 1, w, Math.max(1, Math.abs(y2 - y1) - 2));
+  }
+  const yp = px({ value: lo + (poc + 0.5) * step })?.y;
+  if (yp != null) { ctx.fillStyle = css('--accent'); ctx.fillText('Most traded price', R2 - width - 112, yp + 4); }
+}
+
+// Levels, areas and notes are painted on one canvas that follows every scroll and zoom.
 const cv = $('zones'), ctx = cv.getContext('2d');
 function hexA(c, a) { if (c.startsWith('#') && c.length === 7) return c + Math.round(a * 255).toString(16).padStart(2, '0'); return c; }
+const px = (pt, paneId = MAIN) => chart.convertToPixel(pt, { paneId, absolute: true });
+function chip(text, x, y, bg, fg, alignRight) {
+  ctx.font = '500 11px ' + fontStack();
+  const w = ctx.measureText(text).width + 12, hh = 18, left = alignRight ? x - w : x;
+  ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(left, y - hh / 2, w, hh, 4); ctx.fill();
+  ctx.fillStyle = fg; ctx.textBaseline = 'middle'; ctx.fillText(text, left + 6, y + 0.5);
+}
 (function frame() {
   const w = cv.clientWidth, h = cv.clientHeight, dpr = devicePixelRatio || 1;
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
-  if (S.bars.length) {
-    const right = w - chart.priceScale('right').width();
-    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, right, h); ctx.clip();
-    ctx.font = '500 11px ' + getComputedStyle(document.body).fontFamily;
+  const main = S.bars.length ? chart.getSize(MAIN, 'main') : null;
+  const axis = S.bars.length ? chart.getSize(MAIN, 'yAxis') : null;
+  if (main && axis) {
+    const L = main.left, T = main.top, R2 = main.left + main.width, B = main.top + main.height;
+    ctx.save(); ctx.beginPath(); ctx.rect(L, T, R2 - L, B - T); ctx.clip();
+    ctx.font = '500 11px ' + fontStack(); ctx.textBaseline = 'alphabetic';
+    drawProfile(L, T, R2, B);
+    const used = [];
+    const place = (x, y) => { while (used.some(u => Math.abs(u[0] - x) < 140 && Math.abs(u[1] - y) < 14)) y += 14; used.push([x, y]); return y; };
     for (const z of S.drawings) {
       if (z.type !== 'zone' || !visible(z)) continue;
-      const y1 = candles.priceToCoordinate(z.top), y2 = candles.priceToCoordinate(z.bottom);
-      if (y1 == null || y2 == null) continue;
-      const x = Math.max(0, z.from != null ? chart.timeScale().logicalToCoordinate(idxAt(z.from)) ?? 0 : 0);
-      const top = Math.min(y1, y2), hgt = Math.max(2, Math.abs(y2 - y1)), c = colorOf(z), sg = z.status === 'suggested';
-      ctx.fillStyle = hexA(c, sg ? 0.05 : z.kind === 'gap' ? 0.07 : 0.1); ctx.fillRect(x, top, right - x, hgt);
+      const a = px({ value: z.top }), b = px({ value: z.bottom });
+      if (a?.y == null || b?.y == null) continue;
+      const x = Math.max(L, z.from != null ? px({ dataIndex: idxAt(z.from), value: z.top })?.x ?? L : L);
+      const top = Math.min(a.y, b.y), hgt = Math.max(2, Math.abs(b.y - a.y)), c = colorOf(z), sg = z.status === 'suggested';
+      ctx.fillStyle = hexA(c, sg ? 0.05 : z.kind === 'gap' ? 0.07 : 0.1); ctx.fillRect(x, top, R2 - x, hgt);
       ctx.strokeStyle = hexA(c, 0.45); ctx.lineWidth = 1; ctx.setLineDash(sg ? [3, 3] : []);
-      ctx.beginPath(); ctx.moveTo(x, top + 0.5); ctx.lineTo(right, top + 0.5); ctx.moveTo(x, top + hgt - 0.5); ctx.lineTo(right, top + hgt - 0.5); ctx.stroke();
-      ctx.fillStyle = hexA(c, 0.9);
-      const vTop = Math.max(top, 0), vH = Math.min(top + hgt, h) - vTop;
-      ctx.fillText((sg ? 'Suggested: ' : '') + nameOf(z), x + 8, vH > 24 ? vTop + 16 : top - 6);
+      ctx.beginPath(); ctx.moveTo(x, top + 0.5); ctx.lineTo(R2, top + 0.5); ctx.moveTo(x, top + hgt - 0.5); ctx.lineTo(R2, top + hgt - 0.5); ctx.stroke();
+      const vTop = Math.max(top, T), vH = Math.min(top + hgt, B) - vTop;
+      ctx.fillStyle = hexA(c, 0.9); ctx.fillText((sg ? 'Suggested: ' : '') + nameOf(z), x + 8, place(x + 8, vH > 24 ? vTop + 16 : top - 6));
+    }
+    const tags = [];
+    for (const d of S.drawings) {
+      if (d.type !== 'level' || !visible(d)) continue;
+      const p = px({ value: d.price }); if (p?.y == null || p.y < T || p.y > B) continue;
+      const c = colorOf(d), sg = d.status === 'suggested', strong = d.source === 'ai' && !sg;
+      ctx.strokeStyle = sg ? hexA(c, 0.7) : c; ctx.lineWidth = strong ? 2 : 1; ctx.setLineDash(sg ? [2, 3] : d.kind === 'prior-close' ? [5, 4] : []);
+      ctx.beginPath(); ctx.moveTo(L, Math.round(p.y) + 0.5); ctx.lineTo(R2, Math.round(p.y) + 0.5); ctx.stroke();
+      ctx.setLineDash([]);
+      chip((sg ? 'Suggested: ' : '') + nameOf(d), R2 - 8, p.y, css('--raised'), strong ? c : css('--fg2'), true);
+      tags.push([d, p.y, c]);
+    }
+    for (const n of S.drawings) {
+      if (n.type !== 'note' || !visible(n)) continue;
+      const i = idxAt(n.time), bar = S.bars[i]; if (!bar) continue;
+      const p = px({ dataIndex: i, value: n.position === 'below' ? bar.low : bar.high }); if (p?.x == null) continue;
+      const y = n.position === 'below' ? p.y + 14 : p.y - 14;
+      ctx.fillStyle = css('--accent'); ctx.beginPath(); ctx.arc(p.x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.font = '500 11px ' + fontStack(); ctx.textBaseline = 'middle'; ctx.fillText(n.label, p.x + 8, y);
     }
     ctx.restore();
+    // Price tags on the scale, so every level can be read without hovering.
+    for (const [d, y, c] of tags) chip(fmt(d.price), axis.left + 2, y, d.source === 'ai' ? c : css('--raised'), d.source === 'ai' ? css('--on-accent') : css('--fg'), false);
+  }
+  if (S.guides?.length && chart.getSize(LOWP, 'main')) {
+    const m = chart.getSize(LOWP, 'main');
+    ctx.strokeStyle = css('--line2'); ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+    for (const g of S.guides) { const p = px({ value: g }, LOWP); if (p?.y == null) continue; ctx.beginPath(); ctx.moveTo(m.left, Math.round(p.y) + 0.5); ctx.lineTo(m.left + m.width, Math.round(p.y) + 0.5); ctx.stroke(); }
+    ctx.setLineDash([]);
   }
   requestAnimationFrame(frame);
 })();
@@ -366,7 +454,7 @@ async function renderToday() {
   html += '<h3>Morning brief</h3>';
   if (b.markdown) html += (b.kind === 'facts' ? '<p class="muted">The facts for ' + esc(b.date) + '. Ask your AI to write your brief from them.</p>' : '<p class="muted">Written by your AI for ' + esc(b.date) + '.</p>') + '<div class="brief">' + md(b.markdown.replace(/^_.*_$/m, '')) + '</div>';
   else html += '<p class="muted">No brief yet. Run <b>npm run brief</b>, or ask your AI to write one.</p>';
-  html += '<p class="foot">For learning only. Not financial advice. Trading involves risk. Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a>.</p>';
+  html += '<p class="foot">For learning only. Not financial advice. Trading involves risk. Charts drawn with the open-source <a href="https://github.com/klinecharts/KLineChart" target="_blank" rel="noopener">KLineChart</a>.</p>';
   $('panel').innerHTML = html;
 }
 
@@ -398,7 +486,7 @@ const PROMPTS = [
   ['Turn my trading rules into a my-rules file', 'Describe how you trade and it writes the file with you'],
 ];
 function renderAI() {
-  $('panel').innerHTML = '<h3>Your AI, your chart</h3><p>Open Claude Code or Codex in your Chart Desk folder and say one of these. Whatever it draws appears here as you watch.</p><div class="rowset">'
+  $('panel').innerHTML = '<h3>Your AI, your chart</h3><p>Open Claude Code or Codex in your Alphaline folder and say one of these. Whatever it draws appears here as you watch.</p><div class="rowset">'
     + PROMPTS.map(([q, s], i) => '<div class="prompt"><span><q>' + esc(q.replace('{S}', S.symbol)) + '</q><small>' + esc(s) + '</small></span><button class="copy" data-copy="' + i + '">Copy</button></div>').join('') + '</div>'
     + '<h3>What it can and can’t do</h3><p>It can read the chart, draw levels, areas and notes, add indicators and write your brief. It can’t place trades. The desk has no way to reach your orders.</p>';
 }
@@ -435,10 +523,21 @@ $('helpBtn').onclick = () => openSheet('<button class="ghost done">Done</button>
      ['<svg width="32" height="20"><rect x="0" y="2" width="32" height="16" fill="' + hexA(css('--up'), .15) + '" stroke="' + hexA(css('--up'), .5) + '"/></svg>', 'Shaded areas', 'Price zones rather than single prices: support, resistance and gaps.']]
     .map(([ic, t, d]) => '<div class="legendrow"><span>' + ic + '</span><span><b>' + t + '</b><small>' + d + '</small></span></div>').join('') + '</div><p class="muted">Scroll to zoom. Drag to move back in time. Double-click the price scale to reset.</p>');
 
+$('dataBtn').onclick = async () => {
+  const r = await api('/api/providers');
+  const about = { demo: 'Free delayed prices. Works with no setup. For learning.', csv: 'Drop exported files into data/import. Works with any broker that can export CSV.', alpaca: 'Free account with live IEX prices. Add your keys in config.local.json.', schwab: 'thinkorswim accounts. Needs a Schwab developer app, then npm run schwab-login.' };
+  openSheet('<button class="ghost done">Done</button><h2>Your data</h2><p>Pick where prices come from. Everything stays on this computer.</p><div class="rowset">'
+    + r.providers.map(p => '<label class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(p.label) + (p.builtIn ? '' : '<span class="tag">Plug-in</span>') + '</b><small>' + esc(about[p.id] || 'Your own data source from the providers folder.') + (p.needsSetup ? ' Needs setup first.' : '') + (p.imports ? ' Files: ' + (p.imports.length ? p.imports.join(', ') : 'none yet') + '.' : '') + '</small></span><input type="radio" name="prov" class="toggle" data-prov="' + esc(p.id) + '"' + (p.id === r.current ? ' checked' : '') + '></label>').join('')
+    + '</div><p class="muted">Another broker or data service? Ask your AI: “Write an Alphaline provider for my broker.” It copies providers/_template.js and it shows up here.</p>');
+};
+$('sheetBody').addEventListener('change', async e => {
+  const id = e.target.dataset.prov; if (!id) return;
+  try { const r = await api('/api/provider?id=' + encodeURIComponent(id), { method: 'POST' }); $('feed').textContent = r.provider.id === 'demo' ? 'Delayed demo prices' : r.provider.label; await open(S.symbol); } catch (err) { showErr(err.message); }
+});
 $('indBtn').onclick = async () => {
   const list = await api('/api/indicators/config');
   openSheet('<button class="ghost done">Done</button><h2>Indicators</h2><p>Turn on what helps you. Fewer is clearer. To add something not listed, ask your AI.</p><div class="rowset">'
-    + list.map(x => '<label class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(x.label || (x.type === 'volume' ? 'Volume' : x.type === 'vwap' ? 'VWAP' : x.type === 'bbands' ? 'Bollinger Bands' : x.type === 'custom' ? (x.file || x.id).toUpperCase() : x.id)) + '</b><small>' + esc((IND_HELP[x.type] || IND_HELP.custom)(x.length || x.avgLength || 20)) + '</small></span><input type="checkbox" class="toggle" data-ind="' + esc(x.id) + '"' + (x.enabled !== false ? ' checked' : '') + '></label>').join('') + '</div>');
+    + list.map(x => '<label class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(x.label || (x.type === 'volume' ? 'Volume' : x.type === 'vwap' ? 'VWAP' : x.type === 'bbands' ? 'Bollinger Bands' : x.type === 'custom' ? (x.file || x.id).toUpperCase() : x.type === 'profile' ? 'Volume profile' : x.id)) + '</b><small>' + esc((IND_HELP[x.type] || IND_HELP.custom)(x.length || x.avgLength || 20)) + '</small></span><input type="checkbox" class="toggle" data-ind="' + esc(x.id) + '"' + (x.enabled !== false ? ' checked' : '') + '></label>').join('') + '</div>');
 };
 $('sheetBody').addEventListener('change', async e => { const id = e.target.dataset.ind; if (!id) return; await api('/api/indicators/toggle?id=' + encodeURIComponent(id) + '&enabled=' + e.target.checked, { method: 'POST' }); await loadIndicators(); });
 
@@ -449,9 +548,11 @@ async function open(symbol, tf) {
   try {
     const r = await api('/api/bars?symbol=' + encodeURIComponent(S.symbol) + '&tf=' + S.tf);
     S.bars = r.bars;
-    candles.setData(r.bars.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
-    const n = r.bars.length; chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - (S.tf === '1d' ? 120 : 140)), to: n + 6 });
     showErr(r.stale ? 'Showing the last saved prices. ' + r.error : '');
+    const sym = chart.getSymbol(), per = chart.getPeriod();
+    if (sym?.ticker === S.symbol && per?.type === PERIOD[S.tf].type && per?.span === PERIOD[S.tf].span) chart.resetData();
+    else { chart.setSymbol({ ticker: S.symbol, pricePrecision: 2, volumePrecision: 0 }); chart.setPeriod(PERIOD[S.tf]); }
+    chart.setBarSpace(S.tf === '1d' ? 7 : 6);
     await Promise.all([loadIndicators(), loadDrawings(), api('/api/levels?symbol=' + encodeURIComponent(S.symbol)).then(L => (S.levels = L)).catch(() => (S.levels = null))]);
     renderQuote(); renderTab();
   } catch (e) { showErr(e.message); }
@@ -476,7 +577,7 @@ if (live) {
   };
   setInterval(async () => {
     if (document.hidden || S.tf === '1d') return;
-    try { const r = await api('/api/bars?symbol=' + encodeURIComponent(S.symbol) + '&tf=' + S.tf); S.bars = r.bars; candles.setData(r.bars.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close }))); renderVolume(); renderQuote(); } catch {}
+    try { const r = await api('/api/bars?symbol=' + encodeURIComponent(S.symbol) + '&tf=' + S.tf); const lastT = S.bars.at(-1)?.time; S.bars = r.bars; if (pushBar) for (const b of r.bars.filter(b => b.time >= lastT)) pushBar(toK(b)); renderQuote(); } catch {}
   }, 30000);
 }
 

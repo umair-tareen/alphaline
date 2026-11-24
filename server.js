@@ -1,26 +1,25 @@
-// ATP Chart Desk: local web server. Open http://localhost:4321 after "npm start".
+// Alphaline: local web server. Open http://localhost:4321 after "npm start".
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT, DATA, ensureDirs, loadConfig } from './lib/config.js';
-import { getBars, providerInfo } from './lib/bars.js';
+import { getBars, providerInfo, listProviders, loadPlugins } from './lib/bars.js';
+import { writeJsonFile } from './lib/config.js';
 import { listDrawings, removeDrawing } from './lib/store.js';
 import { autoMark, levelsFor, getState, readBrief, readRules } from './lib/desk.js';
-import { toChartTime } from './lib/time.js';
 import { computeIndicators, loadIndicators, saveIndicators, CONFIG_FILE, CUSTOM_DIR } from './lib/indicators.js';
 import { acceptDrawing } from './lib/store.js';
 
 ensureDirs();
 const cfg = loadConfig();
 const PORT = Number(process.env.PORT || cfg.port || 4321);
-const LWC = path.join(ROOT, 'node_modules', 'lightweight-charts', 'dist', 'lightweight-charts.standalone.production.js');
+const CHART_LIB = path.join(ROOT, 'node_modules', 'klinecharts', 'dist', 'umd', 'klinecharts.min.js');
 
 const send = (res, code, body, type = 'application/json') => {
   res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
   res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 };
 
-const chartDrawing = d => ({ ...d, from: d.from != null ? toChartTime(d.from) : d.from, time: d.time != null ? toChartTime(d.time) : d.time });
 
 const clients = new Set();
 let timer = null;
@@ -41,17 +40,23 @@ if (fs.existsSync(CUSTOM_DIR)) fs.watch(CUSTOM_DIR, onIndicators);
 
 const routes = {
   'GET /': (_q, res) => send(res, 200, fs.readFileSync(path.join(ROOT, 'public', 'index.html')), 'text/html; charset=utf-8'),
-  'GET /vendor/lightweight-charts.js': (_q, res) => send(res, 200, fs.readFileSync(LWC), 'text/javascript'),
+  'GET /vendor/klinecharts.js': (_q, res) => send(res, 200, fs.readFileSync(CHART_LIB), 'text/javascript'),
   'GET /api/config': (_q, res) => send(res, 200, { watchlist: loadConfig().watchlist, provider: providerInfo(), state: getState() }),
   'GET /api/bars': async (q, res) => {
     const r = await getBars(q.get('symbol') || 'SPY', q.get('tf') || '5m');
-    send(res, 200, { ...r, bars: r.bars.map(b => ({ ...b, time: toChartTime(b.time) })) });
+    send(res, 200, r);
   },
   'GET /api/indicators': async (q, res) => {
     const r = await getBars(q.get('symbol') || 'SPY', q.get('tf') || '5m');
     const ind = await computeIndicators(r.bars);
-    const shift = pts => pts.map(p => ({ ...p, time: toChartTime(p.time) }));
-    send(res, 200, { ...ind, lines: ind.lines.map(l => ({ ...l, points: shift(l.points) })), volume: ind.volume && { ...ind.volume, avg: shift(ind.volume.avg) } });
+    send(res, 200, ind);
+  },
+  'GET /api/providers': async (_q, res) => send(res, 200, { current: loadConfig().provider, providers: await listProviders() }),
+  'POST /api/provider': async (q, res) => {
+    const id = q.get('id');
+    if (!(await loadPlugins())[id]) return send(res, 404, { error: 'No data source called ' + id });
+    writeJsonFile(path.join(ROOT, 'config.json'), { ...loadConfig(), provider: id });
+    send(res, 200, { provider: providerInfo() });
   },
   'GET /api/indicators/config': (_q, res) => send(res, 200, loadIndicators()),
   'POST /api/indicators/toggle': (q, res) => {
@@ -63,7 +68,7 @@ const routes = {
     send(res, 200, item);
   },
   'POST /api/drawings/accept': (q, res) => send(res, 200, { accepted: acceptDrawing(q.get('symbol'), q.get('id')) }),
-  'GET /api/drawings': (q, res) => send(res, 200, listDrawings(q.get('symbol') || 'SPY').map(chartDrawing)),
+  'GET /api/drawings': (q, res) => send(res, 200, listDrawings(q.get('symbol') || 'SPY')),
   'DELETE /api/drawings': (q, res) => send(res, 200, { removed: removeDrawing(q.get('symbol'), q.get('id')) }),
   'POST /api/auto': async (q, res) => send(res, 200, await autoMark(q.get('symbol') || 'SPY')),
   'GET /api/levels': async (q, res) => send(res, 200, await levelsFor(q.get('symbol') || 'SPY')),
@@ -85,5 +90,5 @@ http.createServer(async (req, res) => {
   try { await handler(url.searchParams, res); }
   catch (e) { send(res, 500, { error: e.message }); }
 }).listen(PORT, '127.0.0.1', () => {
-  console.log(`ATP Chart Desk is running: http://localhost:${PORT}  (data: ${providerInfo().label})`);
+  console.log(`Alphaline is running: http://localhost:${PORT}  (data: ${providerInfo().label})`);
 });

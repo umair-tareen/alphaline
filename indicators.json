@@ -28,6 +28,14 @@
     "enabled": true
   },
   {
+    "id": "profile",
+    "type": "profile",
+    "label": "Volume profile",
+    "rows": 24,
+    "valueArea": 0.7,
+    "enabled": false
+  },
+  {
     "id": "vwap",
     "type": "vwap",
     "color": "#a1a1a6",

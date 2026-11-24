@@ -3,5 +3,5 @@
 $script = Join-Path $PSScriptRoot 'morning.ps1'
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$script`""
 $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 8:30am
-Register-ScheduledTask -TaskName 'ATP Chart Desk morning brief' -Action $action -Trigger $trigger -Description 'Facts brief + AI morning brief' -Force
-Write-Host 'Scheduled. Remove it any time with: Unregister-ScheduledTask -TaskName "ATP Chart Desk morning brief"'
+Register-ScheduledTask -TaskName 'Alphaline morning brief' -Action $action -Trigger $trigger -Description 'Facts brief + AI morning brief' -Force
+Write-Host 'Scheduled. Remove it any time with: Unregister-ScheduledTask -TaskName "Alphaline morning brief"'
