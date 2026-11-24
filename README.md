@@ -6,6 +6,16 @@ Bring the Claude or Codex subscription you already have. Ask it to "mark today's
 
 Made by [Alpha Trading Pros](https://alphatradingpros.com). For learning only, not financial advice. Trading involves risk.
 
+![Your AI marking levels, gaps and zones on SPY in Alphaline](docs/images/alphaline-demo.gif)
+
+| Dark | Light |
+|---|---|
+| ![Alphaline in dark mode with the 9 and 21 EMA, volume profile and plain-English levels](docs/images/alphaline-dark.png) | ![Alphaline in light mode with each mark explained](docs/images/alphaline-light.png) |
+
+![Every mark your AI draws, listed and explained](docs/images/alphaline-marks.png)
+
+*Screenshots use delayed demo prices.*
+
 ## What you get out of the box
 - Clean candlestick charts in 5 minute, 15 minute, 1 hour and 1 day candles, light and dark
 - The 9 and 21 EMA, plus volume bars that turn white when trading is busier than usual
