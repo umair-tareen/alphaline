@@ -49,7 +49,15 @@ Webull users can also run Webull's official read-only connector next to Alphalin
 ## Make your own indicators
 Built-ins are switched on and off in the app or in `indicators.json`. For anything else, drop a file in `indicators/` (see `indicators/rsi.js`), or ask your AI to write it. Ideas for what to build next, including order-flow views like footprint charts and depth heatmaps, are in [docs/indicator-ideas.md](docs/indicator-ideas.md).
 
-## Quick start
+## Quick start (no terminal)
+1. Install [Node.js](https://nodejs.org) (the LTS version) and the [Claude desktop app](https://claude.ai/download).
+2. Download this repo: the green **Code** button, then **Download ZIP**. Unzip it somewhere you'll find it, like Documents.
+3. Double-click **Start Alphaline** (Mac: **Start Alphaline.command**). The first run sets itself up, then your chart opens in the browser.
+4. Double-click **Connect Claude**. Quit Claude completely, open it again, and ask: "Mark today's key levels on SPY using my rules."
+
+The `kit` folder has the prompts, the risk checklist, a journal template and a fictional practice week.
+
+## Quick start (terminal)
 You need [Node.js](https://nodejs.org) 18 or newer.
 ```
 git clone https://github.com/umair-tareen/alphaline
