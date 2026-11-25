@@ -27,7 +27,7 @@ function claudeConfigPaths() {
 function connectClaude(file) {
   let cfg = {};
   if (fs.existsSync(file)) {
-    const raw = fs.readFileSync(file, 'utf8');
+    const raw = fs.readFileSync(file, 'utf8').replace(/^\u{FEFF}/u, ''); // Notepad and PowerShell can add an invisible BOM
     try { cfg = raw.trim() ? JSON.parse(raw) : {}; }
     catch { console.log('  Your Claude settings file could not be read, so it was left alone: ' + file); return false; }
     fs.copyFileSync(file, file + '.before-alphaline-' + stamp);
