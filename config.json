@@ -31,5 +31,31 @@
       "High",
       "Medium"
     ]
+  },
+  "scanList": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "DIA",
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "AMZN",
+    "GOOGL",
+    "META",
+    "TSLA",
+    "AMD",
+    "AVGO",
+    "JPM",
+    "XOM",
+    "UNH",
+    "COST",
+    "NFLX",
+    "PLTR",
+    "XLF"
+  ],
+  "account": {
+    "size": 10000,
+    "riskPct": 1
   }
 }

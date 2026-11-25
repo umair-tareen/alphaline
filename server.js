@@ -1,5 +1,6 @@
 // Alphaline: local web server. Open http://localhost:4321 after "npm start".
 import http from 'node:http';
+import { exec } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT, DATA, ensureDirs, loadConfig } from './lib/config.js';
@@ -89,6 +90,15 @@ http.createServer(async (req, res) => {
   if (!handler) return send(res, 404, { error: 'Not found' });
   try { await handler(url.searchParams, res); }
   catch (e) { send(res, 500, { error: e.message }); }
+}).on('error', e => {
+  if (e.code === 'EADDRINUSE') { console.log(`Alphaline is already running at http://localhost:${PORT}`); if (process.argv.includes('--open')) exec(process.platform === 'win32' ? `start "" "http://localhost:${PORT}"` : `open "http://localhost:${PORT}"`); }
+  else throw e;
 }).listen(PORT, '127.0.0.1', () => {
-  console.log(`Alphaline is running: http://localhost:${PORT}  (data: ${providerInfo().label})`);
+  const url = `http://localhost:${PORT}`;
+  console.log(`Alphaline is running: ${url}  (data: ${providerInfo().label})`);
+  console.log('Keep this window open while you use Alphaline. Close it to stop.');
+  if (process.argv.includes('--open')) {
+    const cmd = process.platform === 'win32' ? `start "" "${url}"` : process.platform === 'darwin' ? `open "${url}"` : `xdg-open "${url}"`;
+    exec(cmd);
+  }
 });

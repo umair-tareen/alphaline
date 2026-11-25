@@ -21,4 +21,7 @@ await call('chart_auto_mark', { symbol });
 await call('chart_draw_level', { symbol, price: L.prior.high, label: 'Selftest level', kind: 'resistance' });
 await call('chart_clear', { symbol, source: 'ai' });
 await call('news_get', { symbols: [symbol] });
+await call('scan_watchlist', { symbols: [symbol, 'QQQ', 'AAPL'] });
+await call('journal_get', { which: 'sample' });
+await call('risk_size', { entry: 100, stop: 98 });
 await client.close();

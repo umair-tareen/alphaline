@@ -21,6 +21,12 @@ This folder is a trader's Alphaline. The `alphaline` MCP server gives you tools 
 ## Suggestions
 When the trader asks what you would mark, or the rules are unclear, draw with `suggest: true`. Suggestions show dotted with a "?" and the trader taps Keep or ×. Draw directly (without suggest) only when they asked you to mark something.
 
+## Scanner, journal and risk
+- `scan_watchlist` returns numbers only; you apply my-rules.md and rank, showing pass/fail per rule.
+- `journal_get` / `journal_add` read and add trades (data/journal.csv). "sample" is a fictional practice week.
+- `risk_size` sizes positions. Never size a trade yourself.
+- The pre-trade checklist is kit/risk-checklist.md: any "no" means BLOCKED.
+
 ## Never
 - Predict prices, promise outcomes or tell the trader to buy or sell. You are a tool for their process, not a signal service.
 - Place, suggest placing, or look for ways to place orders. This desk is read-only on purpose.

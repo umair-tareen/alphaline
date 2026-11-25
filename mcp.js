@@ -10,6 +10,8 @@ import { autoMark, levelsFor, setFocus, readBrief, saveBrief, readRules } from '
 import { getNews } from './lib/news.js';
 import { fmtET, parseTime } from './lib/time.js';
 import { loadIndicators, saveIndicators, CUSTOM_DIR } from './lib/indicators.js';
+import { scanList } from './lib/scan.js';
+import { readJournal, addTrade, sizePosition } from './lib/journal.js';
 
 ensureDirs();
 const server = new McpServer({ name: 'alphaline', version: '0.1.0' });
@@ -87,6 +89,21 @@ server.tool('indicator_remove', 'Remove an indicator from the chart (use indicat
 
 server.tool('data_sources', 'Data sources available (built-in, CSV imports and plug-ins in providers/), which one is active, and which need setup.', {},
   wrap(async () => ({ active: providerInfo(), sources: await listProviders() })));
+
+server.tool('scan_watchlist', 'Scanner: daily numbers for every symbol on the scan list (close, 9/21/50 EMA, crosses, volume vs average, ATR, stretch from the 21 EMA, gap, yesterday\'s high/low). Apply the trader\'s rules to rank them.',
+  { symbols: z.array(z.string()).optional().describe('Default: scanList in config.json') }, wrap(({ symbols }) => scanList(symbols)));
+
+server.tool('journal_get', 'Read the trade journal as CSV. "mine" = the trader\'s journal (data/journal.csv), "sample" = the fictional practice week.',
+  { which: z.enum(['mine', 'sample']).default('mine') }, wrap(({ which }) => readJournal(which)));
+
+server.tool('journal_add', 'Add one trade to the journal.',
+  { date: z.string(), symbol: z.string(), side: z.enum(['long', 'short']), entry: z.number(), exit: z.number().optional(), shares: z.number().optional(), stop: z.number().optional(),
+    result_r: z.number().optional(), setup: z.string().optional(), rule_followed: z.enum(['yes', 'no']).optional(), emotion: z.string().optional(), notes: z.string().optional() },
+  wrap(t => 'Added: ' + addTrade(t)));
+
+server.tool('risk_size', 'Position size from the risk rule, calculated by code. Defaults come from config.json (account size, risk %).',
+  { entry: z.number(), stop: z.number(), account: z.number().optional(), riskPct: z.number().min(0.05).max(5).optional() },
+  wrap(({ entry, stop, account, riskPct }) => { const a = loadConfig().account || {}; return sizePosition({ entry, stop, account: account ?? a.size ?? 10000, riskPct: riskPct ?? a.riskPct ?? 1 }); }));
 
 server.tool('news_get', 'Recent market headlines and this week\'s US economic calendar (high/medium impact).',
   { symbols: z.array(z.string()).optional().describe('Also pull headlines for these tickers. Default: the watchlist') },
