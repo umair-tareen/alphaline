@@ -111,6 +111,31 @@ server.tool('alert_set', 'Set a price alert. The chart page plays a sound and sh
 server.tool('alert_list', 'List price alerts, including ones already triggered.', {}, wrap(() => listAlerts()));
 server.tool('alert_remove', 'Remove a price alert by id.', { id: z.string() }, wrap(({ id }) => ({ removed: removeAlert(id) })));
 
+server.tool('rules_save', 'Save the trader\'s rules to my-rules.md (replaces the file; a backup is kept). Only after the trader has approved the wording.',
+  { markdown: z.string().min(20) }, wrap(async ({ markdown }) => {
+    const fs = await import('node:fs'); const path = await import('node:path'); const { ROOT } = await import('./lib/config.js');
+    const f = path.join(ROOT, 'my-rules.md'); if (fs.existsSync(f)) fs.copyFileSync(f, f + '.bak');
+    fs.writeFileSync(f, markdown); return 'Saved my-rules.md (previous version in my-rules.md.bak).';
+  }));
+
+server.tool('indicator_write', 'Save a custom indicator file (indicators/<name>.js) and turn it on. Code must follow indicators/rsi.js: export default { label, pane, compute(bars) } returning [{ time, value }]. Plain arithmetic on candles only: no imports, network or file access.',
+  { name: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/), code: z.string().min(20).max(20000), pane: z.enum(['price', 'lower']).default('lower'), color: z.string().optional() },
+  wrap(async ({ name, code, pane, color }) => {
+    if (/\b(import|require|process|fetch|child_process|fs)\b/.test(code.replace(/export default/g, ''))) throw new Error('Indicators may only do arithmetic on the candles: no import, require, process, fetch or file access.');
+    const fs = await import('node:fs'); const path = await import('node:path');
+    fs.mkdirSync(CUSTOM_DIR, { recursive: true }); fs.writeFileSync(path.join(CUSTOM_DIR, name + '.js'), code);
+    const list = loadIndicators(); const item = { id: name, type: 'custom', file: name, pane, color: color || '#a78bfa', width: 1, enabled: true };
+    const i = list.findIndex(x => x.id === name); if (i < 0) list.push(item); else list[i] = { ...list[i], ...item };
+    saveIndicators(list); return 'Saved indicators/' + name + '.js and turned it on. Check the chart.';
+  }));
+
+server.tool('scanlist_set', 'Replace the scanner\'s symbol list (config.json scanList).', { symbols: z.array(z.string()).min(1).max(60) },
+  wrap(async ({ symbols }) => {
+    const path = await import('node:path'); const { ROOT, writeJsonFile } = await import('./lib/config.js');
+    const cfg = loadConfig(); cfg.scanList = symbols.map(s => s.toUpperCase()); writeJsonFile(path.join(ROOT, 'config.json'), cfg);
+    return 'Scan list is now: ' + cfg.scanList.join(', ');
+  }));
+
 server.tool('news_get', 'Recent market headlines and this week\'s US economic calendar (high/medium impact).',
   { symbols: z.array(z.string()).optional().describe('Also pull headlines for these tickers. Default: the watchlist') },
   wrap(({ symbols }) => getNews(symbols || loadConfig().watchlist)));
