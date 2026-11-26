@@ -68,7 +68,7 @@ npm start
 Open http://localhost:4321. Press **Mark key levels**. Then open `claude` or `codex` in the same folder.
 
 ## Why we built it
-Charting platforms keep putting more of the basics behind a paywall. Free TradingView users began reporting a cap on chart drawings in November 2026. What is confirmed and what isn't is in [docs/why-alphaline.md](docs/why-alphaline.md). Alphaline is the opposite: draw as much as you like, keep your data, pay nothing.
+Free TradingView users began reporting a cap of about 30 chart drawings in November 2026. TradingView hasn't confirmed it; [docs/why-alphaline.md](docs/why-alphaline.md) keeps what's confirmed apart from what's reported. Alphaline has no drawing limit, keeps your data on your computer, and is free.
 
 ## Files
 | Path | What it is |
