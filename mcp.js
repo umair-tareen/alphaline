@@ -11,6 +11,7 @@ import { getNews } from './lib/news.js';
 import { fmtET, parseTime } from './lib/time.js';
 import { loadIndicators, saveIndicators, CUSTOM_DIR } from './lib/indicators.js';
 import { scanList } from './lib/scan.js';
+import { listAlerts, addAlert, removeAlert } from './lib/alerts.js';
 import { readJournal, addTrade, sizePosition } from './lib/journal.js';
 
 ensureDirs();
@@ -104,6 +105,11 @@ server.tool('journal_add', 'Add one trade to the journal.',
 server.tool('risk_size', 'Position size from the risk rule, calculated by code. Defaults come from config.json (account size, risk %).',
   { entry: z.number(), stop: z.number(), account: z.number().optional(), riskPct: z.number().min(0.05).max(5).optional() },
   wrap(({ entry, stop, account, riskPct }) => { const a = loadConfig().account || {}; return sizePosition({ entry, stop, account: account ?? a.size ?? 10000, riskPct: riskPct ?? a.riskPct ?? 1 }); }));
+
+server.tool('alert_set', 'Set a price alert. The chart page plays a sound and shows a notification when price crosses it.',
+  { symbol: Sym, price: z.number(), direction: z.enum(['above', 'below']), note: z.string().max(80).optional() }, wrap(a => addAlert(a)));
+server.tool('alert_list', 'List price alerts, including ones already triggered.', {}, wrap(() => listAlerts()));
+server.tool('alert_remove', 'Remove a price alert by id.', { id: z.string() }, wrap(({ id }) => ({ removed: removeAlert(id) })));
 
 server.tool('news_get', 'Recent market headlines and this week\'s US economic calendar (high/medium impact).',
   { symbols: z.array(z.string()).optional().describe('Also pull headlines for these tickers. Default: the watchlist') },

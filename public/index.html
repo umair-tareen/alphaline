@@ -8,17 +8,17 @@
 :root{
   --deep:#fafafa;--bg:#ffffff;--card:#ffffff;--raised:#f4f4f5;--line:rgba(23,23,23,.08);--line2:rgba(23,23,23,.14);
   --fg:#171717;--fg2:#525252;--mute:#737373;--accent:#0f8a55;--on-accent:#ffffff;--up:#16a34a;--down:#dc2626;
-  --ema9:#2f7fc4;--ema21:#c47f12;--vol:#c9c9cc;--vol-hot:#3a3a3c;--grid:rgba(23,23,23,.05);--shadow:0 8px 32px rgba(0,0,0,.12);
+  --ema9:#2f7fc4;--you:#7c5cd6;--warn:#b7791f;--ema21:#c47f12;--vol:#c9c9cc;--vol-hot:#3a3a3c;--grid:rgba(23,23,23,.05);--shadow:0 8px 32px rgba(0,0,0,.12);
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --deep:#0f0f10;--bg:#141415;--card:#19191b;--raised:#232325;--line:rgba(237,237,237,.08);--line2:rgba(237,237,237,.14);
   --fg:#ededed;--fg2:#a1a1a6;--mute:#85858b;--accent:#3ccf8e;--on-accent:#05130c;--up:#4cc38a;--down:#e5484d;
-  --ema9:#5eb1ef;--ema21:#e8a33d;--vol:#3a3a3d;--vol-hot:#ededed;--grid:rgba(237,237,237,.04);--shadow:0 12px 40px rgba(0,0,0,.5);color-scheme:dark}}
+  --ema9:#5eb1ef;--you:#a78bfa;--warn:#f0b429;--ema21:#e8a33d;--vol:#3a3a3d;--vol-hot:#ededed;--grid:rgba(237,237,237,.04);--shadow:0 12px 40px rgba(0,0,0,.5);color-scheme:dark}}
 :root[data-theme="dark"]{
   --deep:#0f0f10;--bg:#141415;--card:#19191b;--raised:#232325;--line:rgba(237,237,237,.08);--line2:rgba(237,237,237,.14);
   --fg:#ededed;--fg2:#a1a1a6;--mute:#85858b;--accent:#3ccf8e;--on-accent:#05130c;--up:#4cc38a;--down:#e5484d;
-  --ema9:#5eb1ef;--ema21:#e8a33d;--vol:#3a3a3d;--vol-hot:#ededed;--grid:rgba(237,237,237,.04);--shadow:0 12px 40px rgba(0,0,0,.5);color-scheme:dark}
+  --ema9:#5eb1ef;--you:#a78bfa;--warn:#f0b429;--ema21:#e8a33d;--vol:#3a3a3d;--vol-hot:#ededed;--grid:rgba(237,237,237,.04);--shadow:0 12px 40px rgba(0,0,0,.5);color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
@@ -45,7 +45,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .feed{font-size:12px;color:var(--mute);white-space:nowrap}
 
 /* Main */
-main{display:grid;grid-template-columns:minmax(0,1fr) 340px;min-height:0}
+main{display:grid;grid-template-columns:minmax(0,1fr) 404px;min-height:0}
 .stage{position:relative;min-width:0;min-height:0;display:grid;grid-template-rows:auto 1fr}
 .quote{display:flex;align-items:flex-end;gap:16px;padding:16px 20px 8px;flex-wrap:wrap}
 .quote h1{margin:0;font-size:28px;font-weight:600;line-height:1}
@@ -71,10 +71,48 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 340px;min-height:0}
 .welcome li b{color:var(--fg);font-weight:500;display:block}
 .step{width:24px;height:24px;border-radius:12px;background:var(--raised);display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--fg)}
 
-/* Side panel */
-aside{border-left:1px solid var(--line);background:var(--deep);display:grid;grid-template-rows:auto 1fr;min-height:0}
-aside .seg{margin:12px 16px;display:flex}
-aside .seg button{flex:1}
+/* Side panel + rail */
+aside{border-left:1px solid var(--line);background:var(--deep);display:grid;grid-template-columns:minmax(0,1fr) 64px;min-height:0}
+.rail{border-left:1px solid var(--line);display:flex;flex-direction:column;gap:2px;padding:8px 4px;overflow-y:auto}
+.rail button{border:0;background:none;color:var(--mute);border-radius:8px;padding:6px 0 5px;display:grid;justify-items:center;gap:3px;font-size:10px;font-weight:500;line-height:1.1}
+.rail button svg{width:18px;height:18px}
+.rail button:hover{background:var(--raised);color:var(--fg)}
+.rail button[aria-pressed="true"]{background:var(--raised);color:var(--accent)}
+.rail hr{border:0;border-top:1px solid var(--line);margin:6px 8px}
+.panelwrap{display:grid;grid-template-rows:auto 1fr;min-height:0}
+.panelhead{padding:14px 16px 4px;font-weight:600;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.panelhead small{color:var(--mute);font-weight:400;font-size:12px}
+/* Drawing toolbar */
+.tools{position:absolute;left:8px;top:8px;z-index:7;display:flex;flex-direction:column;gap:2px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.tools button{border:0;background:none;color:var(--fg2);width:32px;height:32px;border-radius:7px;display:grid;place-items:center}
+.tools button svg{width:18px;height:18px}
+.tools button:hover{background:var(--raised);color:var(--fg)}
+.tools button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.tools hr{border:0;border-top:1px solid var(--line);margin:2px 4px}
+.hint-pill{position:absolute;left:56px;top:12px;z-index:7;background:var(--card);border:1px solid var(--line2);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--fg2)}
+/* Forms and tables in panels */
+.form{display:grid;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.form .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.form label{display:grid;gap:4px;font-size:12px;color:var(--mute)}
+.form input,.form select,.form textarea{font:inherit;font-size:13px;color:var(--fg);background:var(--raised);border:1px solid var(--line2);border-radius:7px;padding:7px 9px;min-width:0}
+.form textarea{font:12px/1.5 ui-monospace,Consolas,monospace;min-height:220px;resize:vertical}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn2{border:1px solid var(--line2);background:var(--raised);color:var(--fg);height:30px;padding:0 12px;border-radius:7px;font-size:13px;font-weight:500}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{text-align:left;font-weight:500;color:var(--mute);padding:6px 4px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl tr[data-open]{cursor:pointer}.tbl tr[data-open]:hover td{background:var(--raised)}
+.scroll{overflow-x:auto}
+.pass{color:var(--up)}.fail{color:var(--mute)}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-size:18px;font-weight:600;color:var(--fg)}
+.stat span{font-size:12px;color:var(--mute)}
+.pat{display:grid;gap:2px;padding:10px 12px;border-top:1px solid var(--line);cursor:pointer}
+.pat:first-child{border-top:0}.pat:hover{background:var(--raised)}
+.pat b{font-weight:500;color:var(--fg)}.pat small{color:var(--mute);font-size:12px}
+.ladder{font:12px ui-monospace,Consolas,monospace;display:grid;grid-template-columns:1fr auto 1fr;gap:1px 8px}
+/* Side panel (old) */
 .panel{overflow:auto;padding:4px 16px 24px;min-height:0}
 .panel h3{font-size:13px;font-weight:600;margin:20px 0 8px;color:var(--fg)}
 .panel h3:first-child{margin-top:8px}
@@ -144,7 +182,6 @@ aside .seg button{flex:1}
   <header class="bar">
     <div class="mark"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="7" width="3" height="8" rx="1" fill="var(--fg2)"/><rect x="8.5" y="3" width="3" height="11" rx="1" fill="var(--accent)"/><rect x="14" y="9" width="3" height="7" rx="1" fill="var(--fg2)"/></svg><span>Alphaline</span></div>
     <label class="search"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 9.5 13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input id="sym" placeholder="Symbol" spellcheck="false" autocomplete="off" aria-label="Symbol"></label>
-    <div class="seg" id="watch" role="group" aria-label="Watchlist"></div>
     <div class="seg" id="tfs" role="group" aria-label="Candle size"></div>
     <div class="spacer"></div>
     <span class="feed" id="feed"></span>
@@ -162,22 +199,22 @@ aside .seg button{flex:1}
         <div class="ohlc num" id="ohlc"></div>
         <div class="legend" id="legend"></div>
       </div>
-      <div class="chartbox"><div id="chart"></div><canvas id="zones"></canvas><div class="err" id="err" hidden></div>
+      <div class="chartbox"><div class="tools" id="tools" role="toolbar" aria-label="Drawing tools"><button data-tool="cursor" title="Pointer" aria-label="Pointer" aria-pressed="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l10 6-4.5 1.2L8.8 15z"/></svg></button><button data-tool="hline" title="Horizontal level" aria-label="Horizontal level"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h14"/><circle cx="10" cy="10" r="1.5"/></svg></button><button data-tool="segment" title="Trend line" aria-label="Trend line"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15L16 5"/><circle cx="4" cy="15" r="1.5"/><circle cx="16" cy="5" r="1.5"/></svg></button><button data-tool="rayLine" title="Ray" aria-label="Ray"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14l13-8"/><circle cx="4" cy="14" r="1.5"/></svg></button><button data-tool="box" title="Zone (box)" aria-label="Zone (box)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="6" width="13" height="8" rx="1"/></svg></button><button data-tool="fibonacciLine" title="Fibonacci" aria-label="Fibonacci"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h14M3 8h14M3 12h14M3 16h14"/></svg></button><button data-tool="simpleAnnotation" title="Text note" aria-label="Text note"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10M10 5v11"/></svg></button><button data-tool="brush" title="Brush" aria-label="Brush"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15c3 0 3-3 6-3s3-5 6-6"/></svg></button><hr><button data-tool="alert" title="Alert at a price" aria-label="Alert at a price"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14V9a4 4 0 0 1 8 0v5l1.5 1.5h-11zM8.5 17.5h3"/></svg></button><button data-tool="clear" title="Clear my drawings" aria-label="Clear my drawings"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h10M8 6V4h4v2M6 6l1 10h6l1-10"/></svg></button></div><div class="hint-pill" id="toolHint" hidden></div><div id="chart"></div><canvas id="zones"></canvas><div class="err" id="err" hidden></div>
         <div class="welcome" id="welcome" hidden>
           <h2>Welcome to Alphaline</h2>
           <p>Everything here runs on your computer. Three steps to start:</p>
           <ol>
             <li><span class="step">1</span><span><b>Pick a symbol</b>Type a ticker like SPY at the top.</span></li>
             <li><span class="step">2</span><span><b>Press Mark key levels</b>The desk draws yesterday's high and low, the opening gap and nearby areas where price turned before.</span></li>
-            <li><span class="step">3</span><span><b>Ask your AI</b>Open the Ask AI tab for things to say to your Claude or Codex.</span></li>
+            <li><span class="step">3</span><span><b>Ask your AI</b>Open Your AI on the right for things to say to your Claude or Codex.</span></li>
           </ol>
           <button class="primary" id="welcomeOk">Got it</button>
         </div>
       </div>
     </section>
     <aside>
-      <div class="seg" id="tabs" role="tablist"><button data-tab="today" aria-pressed="true">Today</button><button data-tab="marks" aria-pressed="false">On the chart</button><button data-tab="ai" aria-pressed="false">Ask AI</button></div>
-      <div class="panel" id="panel"></div>
+      <div class="panelwrap"><div class="panelhead" id="panelTitle"></div><div class="panel" id="panel"></div></div>
+      <nav class="rail" id="tabs" aria-label="Panels"><button data-tab="today" aria-pressed="false" title="Today"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h12v11H4zM4 8h12M7 3v3M13 3v3"/></svg><span>Today</span></button><button data-tab="watch" aria-pressed="false" title="Watchlist"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h8"/></svg><span>Watchlist</span></button><button data-tab="screener" aria-pressed="false" title="Screener"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="5"/><path d="m13 13 4 4"/></svg><span>Screener</span></button><button data-tab="patterns" aria-pressed="false" title="Patterns"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15l4-5 3 3 4-6 3 4"/></svg><span>Patterns</span></button><button data-tab="signals" aria-pressed="false" title="Signals"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 10m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0M6.5 6.5a5 5 0 0 0 0 7M13.5 6.5a5 5 0 0 1 0 7M4 4a8.5 8.5 0 0 0 0 12M16 4a8.5 8.5 0 0 1 0 12"/></svg><span>Signals</span></button><button data-tab="alerts" aria-pressed="false" title="Alerts"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 14V9a4 4 0 0 1 8 0v5l1.5 1.5h-11zM8.5 17.5h3"/></svg><span>Alerts</span></button><button data-tab="journal" aria-pressed="false" title="Journal"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h9a1 1 0 0 1 1 1v13H6a1 1 0 0 1-1-1zM8 7h4M8 10h4"/></svg><span>Journal</span></button><button data-tab="news" aria-pressed="false" title="News"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10v11H5a1 1 0 0 1-1-1zM14 8h2v7a1 1 0 0 1-2 0M7 8h4M7 11h4"/></svg><span>News</span></button><button data-tab="bots" aria-pressed="false" title="Routines"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h10v7H5zM10 5v3M7.5 11h.01M12.5 11h.01M3 11v2M17 11v2"/></svg><span>Routines</span></button><button data-tab="dom" aria-pressed="false" title="DOM"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h5v3H4zM4 9h7v3H4zM11 4h5v3h-5zM9 14h7v3H9z"/></svg><span>DOM</span></button><hr><button data-tab="marks" aria-pressed="false" title="Marks"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h14M3 13h14M6 4v12"/></svg><span>Marks</span></button><button data-tab="code" aria-pressed="false" title="Code"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 6l-4 4 4 4M13 6l4 4-4 4"/></svg><span>Code</span></button><button data-tab="ai" aria-pressed="false" title="Your AI"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l1.6 4.4L16 9l-4.4 1.6L10 15l-1.6-4.4L4 9l4.4-1.6z"/></svg><span>Your AI</span></button></nav>
     </aside>
   </main>
 </div>
@@ -281,13 +318,14 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme
 function colorOf(d) {
   if (d.color) return d.color;
   if (d.source === 'ai') return css('--accent');
+  if (d.source === 'you') return css('--you');
   if (d.kind === 'support' || d.kind === 'fvg-bull') return css('--up');
   if (d.kind === 'resistance' || d.kind === 'fvg-bear') return css('--down');
   if (d.kind === 'prior-close') return css('--mute');
   return css('--fg2');
 }
-const nameOf = d => (d.source === 'ai' ? d.label : (KINDS[d.kind]?.[0] || d.label)) || 'Mark';
-const visible = d => !S.hidden.has(d.source === 'ai' ? 'ai' : d.kind?.replace(/-(high|low|close|bull|bear)$/, ''));
+const nameOf = d => (d.source === 'ai' || d.source === 'you' ? d.label : (KINDS[d.kind]?.[0] || d.label)) || 'Mark';
+const visible = d => !S.hidden.has(d.source === 'ai' ? 'ai' : d.source === 'you' ? 'you' : d.kind?.replace(/-(high|low|close|bull|bear)$/, ''));
 
 const api = async (path, opts) => { const r = await fetch(path, opts); const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j; };
 function showErr(m) { $('err').hidden = !m; $('err').textContent = m || ''; }
@@ -331,6 +369,7 @@ async function loadIndicators() {
 
 async function loadDrawings() {
   S.drawings = await api('/api/drawings?symbol=' + encodeURIComponent(S.symbol));
+  try { drawUserOverlays(); } catch {}
   if (S.tab === 'marks') renderMarks();
 }
 
@@ -406,6 +445,13 @@ function chip(text, x, y, bg, fg, alignRight) {
       chip((sg ? 'Suggested: ' : '') + nameOf(d), R2 - 8, p.y, css('--raised'), strong ? c : css('--fg2'), true);
       tags.push([d, p.y, c]);
     }
+    for (const a of (S.alerts || []).filter(a => a.symbol === S.symbol && !a.triggered)) {
+      const p = px({ value: a.price }); if (p?.y == null || p.y < T || p.y > B) continue;
+      ctx.strokeStyle = css('--warn'); ctx.lineWidth = 1; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(L, Math.round(p.y) + 0.5); ctx.lineTo(R2, Math.round(p.y) + 0.5); ctx.stroke(); ctx.setLineDash([]);
+      chip('Alert ' + (a.direction === 'above' ? '↑ ' : '↓ ') + fmt(a.price), R2 - 8, p.y, css('--raised'), css('--warn'), true);
+    }
+    if (S.pending) { const p = px({ value: S.pending.price }); if (p?.y != null) { ctx.strokeStyle = css('--you'); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(L, p.y); ctx.lineTo(R2, p.y); ctx.stroke(); ctx.setLineDash([]); } }
     for (const n of S.drawings) {
       if (n.type !== 'note' || !visible(n)) continue;
       const i = idxAt(n.time), bar = S.bars[i]; if (!bar) continue;
@@ -461,21 +507,21 @@ async function renderToday() {
 }
 
 function renderMarks() {
-  const d = S.drawings, sugs = d.filter(m => m.status === 'suggested'), rest = d.filter(m => m.status !== 'suggested' && m.type !== 'note');
+  const d = S.drawings, sugs = d.filter(m => m.status === 'suggested'), rest = d.filter(m => m.status !== 'suggested' && m.type !== 'note' && m.type !== 'overlay');
   const val = m => m.type === 'zone' ? fmt(m.bottom) + '–' + fmt(m.top) : m.type === 'level' ? fmt(m.price) : '';
   const help = m => m.source === 'ai' ? (m.note || 'Drawn by your AI') : (KINDS[m.kind]?.[1] || '');
   const row = (m, extra) => '<div class="row"><span class="sw' + (m.type === 'level' ? ' line' : '') + '" style="background:' + esc(colorOf(m)) + '"></span><span class="name"><b>' + esc(nameOf(m)) + (m.source === 'ai' ? '<span class="tag">AI</span>' : '') + '</b><small>' + esc(help(m)) + '</small></span><span class="val num">' + val(m) + '</span>' + extra + '</div>';
   let html = '';
   if (sugs.length) html += '<h3>Suggested by your AI</h3><p>Keep the ones that match how you trade.</p><div class="rowset">' + sugs.map(m => row(m, '<span><button class="keep" data-keep="' + esc(m.id) + '">Keep</button><button class="x" data-del="' + esc(m.id) + '" aria-label="Dismiss">✕</button></span>')).join('') + '</div>';
-  const groups = [['ai', 'From your AI'], ['prior', 'Yesterday'], ['premarket', 'Before the open'], ['gap', 'Opening gap'], ['support', 'Support'], ['resistance', 'Resistance'], ['fvg', 'Fast-move gaps']];
-  const keyOf = m => m.source === 'ai' ? 'ai' : (m.kind || '').replace(/-(high|low|close|bull|bear)$/, '');
+  const groups = [['you', 'Your drawings'], ['ai', 'From your AI'], ['prior', 'Yesterday'], ['premarket', 'Before the open'], ['gap', 'Opening gap'], ['support', 'Support'], ['resistance', 'Resistance'], ['fvg', 'Fast-move gaps']];
+  const keyOf = m => m.source === 'you' ? 'you' : m.source === 'ai' ? 'ai' : (m.kind || '').replace(/-(high|low|close|bull|bear)$/, '');
   const present = groups.filter(([k]) => rest.some(m => keyOf(m) === k));
   if (!present.length && !sugs.length) {
     $('panel').innerHTML = '<h3>Nothing on the chart yet</h3><p>Press <b>Mark key levels</b> at the top, or ask your AI to mark the chart for you.</p>';
     return;
   }
   html += '<h3>Show on chart</h3><div class="rowset">' + present.map(([k, label]) => '<label class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + label + '</b></span><input type="checkbox" class="toggle" data-layer="' + k + '"' + (S.hidden.has(k) ? '' : ' checked') + '></label>').join('') + '</div>';
-  html += '<h3>Every mark</h3><div class="rowset">' + rest.map(m => row(m, m.source === 'ai' ? '<button class="x" data-del="' + esc(m.id) + '" aria-label="Remove">✕</button>' : '<span></span>')).join('') + '</div>';
+  html += '<h3>Every mark</h3><div class="rowset">' + rest.map(m => row(m, m.source === 'ai' || m.source === 'you' ? '<button class="x" data-del="' + esc(m.id) + '" aria-label="Remove">✕</button>' : '<span></span>')).join('') + '</div>';
   $('panel').innerHTML = html;
 }
 
@@ -492,10 +538,163 @@ function renderAI() {
     + PROMPTS.map(([q, s], i) => '<div class="prompt"><span><q>' + esc(q.replace('{S}', S.symbol)) + '</q><small>' + esc(s) + '</small></span><button class="copy" data-copy="' + i + '">Copy</button></div>').join('') + '</div>'
     + '<h3>What it can and can’t do</h3><p>It can read the chart, draw levels, areas and notes, add indicators and write your brief. It can’t place trades. The desk has no way to reach your orders.</p>';
 }
-const renderTab = () => (S.tab === 'today' ? renderToday() : S.tab === 'marks' ? Promise.resolve(renderMarks()) : Promise.resolve(renderAI())).catch(e => { $('panel').innerHTML = '<p class="muted">' + esc(e.message) + '</p>'; });
+const TITLES = { today: 'Today', watch: 'Watchlist', screener: 'Screener', patterns: 'Patterns', signals: 'Signals', alerts: 'Alerts', journal: 'Journal', news: 'News', bots: 'Routines', dom: 'Depth of market', marks: 'On the chart', code: 'Your indicators', ai: 'Your AI' };
+const P = s => ($('panel').innerHTML = s);
+const pct = v => v == null ? '–' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + '%';
+const yes = (b, t) => '<span class="' + (b ? 'pass' : 'fail') + '">' + (b ? '✓ ' : '· ') + esc(t) + '</span>';
+const copyBtn = t => '<button class="copy" data-copytext="' + esc(t) + '">Copy</button>';
+
+async function renderWatch() {
+  const syms = S.watch || [];
+  P('<form class="form" id="wAdd"><div class="two"><input id="wSym" placeholder="Add a symbol, e.g. AAPL" autocomplete="off" style="text-transform:uppercase"><button class="btn2">Add</button></div></form><h3>Your list</h3><div class="rowset" id="wList"><p class="muted" style="padding:12px">Loading prices…</p></div><p class="muted" style="margin-top:12px">Tap a symbol to open its chart.</p>');
+  $('wAdd').onsubmit = e => { e.preventDefault(); const s = $('wSym').value.trim().toUpperCase(); if (s && !syms.includes(s)) { S.watch = [...syms, s]; store.set('watch', S.watch); } renderWatch(); };
+  const q = syms.length ? await api('/api/quotes?symbols=' + syms.join(',')) : [];
+  $('wList').innerHTML = q.map(x => '<div class="row" style="grid-template-columns:minmax(0,1fr) auto auto auto;cursor:pointer" data-open="' + esc(x.symbol) + '"><span class="name"><b>' + esc(x.symbol) + '</b></span><span class="val num">' + (x.error ? 'no data' : fmt(x.last)) + '</span><span class="num ' + ((x.pct ?? 0) >= 0 ? 'up' : 'down') + '" style="font-size:13px">' + pct(x.pct) + '</span><button class="x" data-unwatch="' + esc(x.symbol) + '" aria-label="Remove">✕</button></div>').join('') || '<p class="muted" style="padding:12px">Empty. Add a symbol above.</p>';
+}
+
+async function renderScreener() {
+  P('<p>Every symbol on your scan list, scored on facts from daily candles. Tap a row to open it.</p><div class="scroll" id="scr"><p class="muted">Scanning…</p></div><div class="rowset" style="margin-top:12px"><div class="prompt"><span><q>Rank a top 5 using my rules</q><small>Your AI applies your rules to these numbers</small></span>' + copyBtn('Read my rules with rules_get, then run scan_watchlist. Score every symbol against each of my rules, show pass or fail per rule, and give me a top 5 ranked by how many rules pass. Use only the numbers the scan returns.') + '</div></div>');
+  const r = await api('/api/scan');
+  const rows = r.rows.sort((a, b) => (b.volumeVsAvg ?? 0) - (a.volumeVsAvg ?? 0));
+  const ck = b => b ? '<span class="pass">✓</span>' : '<span class="fail">·</span>';
+  $('scr').innerHTML = '<table class="tbl num"><tr><th>Symbol</th><th>Last</th><th>Day</th><th>9>21</th><th>>50</th><th>Vol×</th><th>vs 21</th></tr>' + rows.map(x => '<tr data-open="' + esc(x.symbol) + '"><td><b>' + esc(x.symbol) + '</b></td><td>' + fmt(x.close) + '</td><td class="' + (x.changePct >= 0 ? 'up' : 'down') + '">' + pct(x.changePct) + '</td><td>' + ck(x.ema9Above21) + '</td><td>' + ck(x.above50) + '</td><td>' + (x.volumeVsAvg ?? '–') + '</td><td>' + (x.stretchFrom21InAtr ?? '–') + '</td></tr>').join('') + '</table><p class="muted">Vol× = volume vs its 20-day average. vs 21 = distance from the 21 EMA in daily ranges (ATR).</p>' + (r.errors.length ? '<p class="muted">Skipped: ' + esc(r.errors.join('; ')) + '</p>' : '');
+}
+
+const PATTERNS = [
+  ['crossUpToday', '9 EMA crossed above the 21 EMA today', 'The faster average moved above the slower one.'],
+  ['crossDownToday', '9 EMA crossed below the 21 EMA today', 'The faster average moved below the slower one.'],
+  ['insideDay', 'Inside day', 'Today’s whole range sits inside yesterday’s. Often a pause.'],
+  ['outsideDay', 'Outside day', 'Today went above yesterday’s high and below its low.'],
+  ['volumeSpike', 'Volume spike', 'Traded more than 1.8× its 20-day average.'],
+  ['aboveYesterdaysHigh', 'Closed above yesterday’s high', ''],
+  ['belowYesterdaysLow', 'Closed below yesterday’s low', ''],
+];
+async function renderPatterns() {
+  P('<p>Simple, checkable patterns across your scan list. They describe what happened, not what happens next.</p><div id="pats"><p class="muted">Looking…</p></div>');
+  const r = await api('/api/scan');
+  const blocks = PATTERNS.map(([k, t, d]) => [t, d, r.rows.filter(x => x[k])]).concat([['Opened with a gap over 1%', 'The open was more than 1% from yesterday’s close.', r.rows.filter(x => Math.abs(x.gapPct) >= 1)]]).filter(b => b[2].length);
+  $('pats').innerHTML = blocks.map(([t, d, list]) => '<h3>' + esc(t) + ' <span class="muted">· ' + list.length + '</span></h3>' + (d ? '<p class="muted">' + esc(d) + '</p>' : '') + '<div class="rowset">' + list.map(x => '<div class="pat" data-open="' + esc(x.symbol) + '"><b>' + esc(x.symbol) + ' <span class="num ' + (x.changePct >= 0 ? 'up' : 'down') + '" style="font-weight:400">' + pct(x.changePct) + '</span></b></div>').join('') + '</div>').join('') || '<p class="muted">Nothing stood out today.</p>';
+}
+
+async function renderSignals() {
+  P('<p>Facts about ' + esc(S.symbol) + ' right now. Your rules decide what they mean.</p><div id="sig"><p class="muted">Checking…</p></div>');
+  const r = await api('/api/scan?symbols=' + S.symbol);
+  const x = r.rows[0]; if (!x) return ($('sig').innerHTML = '<p class="muted">' + esc(r.errors.join('; ') || 'No daily data') + '</p>');
+  const sugs = S.drawings.filter(d => d.status === 'suggested').length;
+  $('sig').innerHTML = '<div class="rowset" style="padding:0 12px">' + [
+    yes(x.crossUpToday, '9 EMA crossed above the 21 EMA today'), yes(x.crossDownToday, '9 EMA crossed below the 21 EMA today'),
+    yes(x.ema9Above21, '9 EMA is above the 21 EMA'), yes(x.above50, 'Price is above the 50 EMA'),
+    yes(x.aboveYesterdaysHigh, 'Closed above yesterday’s high'), yes(x.belowYesterdaysLow, 'Closed below yesterday’s low'),
+    yes(x.insideDay, 'Inside day'), yes(x.volumeSpike, 'Volume ' + (x.volumeVsAvg ?? '–') + '× its average'),
+  ].map((s, i) => '<div style="padding:9px 0;' + (i ? 'border-top:1px solid var(--line)' : '') + '">' + s + '</div>').join('') + '</div>'
+  + '<p class="muted" style="margin-top:10px">Price is ' + (x.stretchFrom21InAtr ?? '–') + ' daily ranges from the 21 EMA.' + (sugs ? ' ' + sugs + ' suggestion' + (sugs > 1 ? 's' : '') + ' from your AI waiting in Marks.' : '') + '</p>';
+}
+
+async function loadAlerts() { S.alerts = await api('/api/alerts').catch(() => []); }
+function chime() {
+  try { const a = new (window.AudioContext || window.webkitAudioContext)(); [880, 1320].forEach((f, i) => { const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; o.connect(g); g.connect(a.destination); const t = a.currentTime + i * 0.18; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35); o.start(t); o.stop(t + 0.4); }); } catch {}
+}
+async function checkAlerts() {
+  const live = (S.alerts || []).filter(a => !a.triggered); if (!live.length) return;
+  const q = await api('/api/quotes?symbols=' + [...new Set(live.map(a => a.symbol))].join(',')).catch(() => []);
+  for (const a of live) {
+    const last = q.find(x => x.symbol === a.symbol)?.last; if (last == null) continue;
+    if (a.direction === 'above' ? last >= a.price : last <= a.price) {
+      await api('/api/alerts/triggered?id=' + a.id + '&price=' + last, { method: 'POST' });
+      chime();
+      const msg = a.symbol + ' is ' + (a.direction === 'above' ? 'at or above ' : 'at or below ') + fmt(a.price) + (a.note ? ' · ' + a.note : '');
+      try { if (Notification.permission === 'granted') new Notification('Alphaline alert', { body: msg }); } catch {}
+      showErr('Alert: ' + msg);
+    }
+  }
+  await loadAlerts(); if (S.tab === 'alerts') renderAlerts();
+}
+async function addAlertAt(price) {
+  try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch {}
+  const last = S.bars.at(-1)?.close ?? price;
+  await api('/api/alerts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: S.symbol, price: Math.round(price * 100) / 100, direction: price >= last ? 'above' : 'below' }) });
+  await loadAlerts(); S.tab = 'alerts'; syncTabs(); renderTab();
+}
+async function renderAlerts() {
+  await loadAlerts();
+  const last = S.bars.at(-1)?.close;
+  const waiting = S.alerts.filter(a => !a.triggered), rang = S.alerts.filter(a => a.triggered);
+  P('<form class="form" id="aAdd"><div class="two"><label>Symbol<input id="aSym" value="' + esc(S.symbol) + '"></label><label>Price<input id="aPrice" inputmode="decimal" value="' + (last ? last.toFixed(2) : '') + '"></label></div><div class="two"><label>When price goes<select id="aDir"><option value="above">At or above</option><option value="below">At or below</option></select></label><label>Note (optional)<input id="aNote" maxlength="80"></label></div><button class="primary">Set alert</button></form>'
+    + '<p class="muted" style="margin-top:8px">Or pick the bell in the drawing tools and click the chart. Alerts ring with a sound and a desktop notification while Alphaline is open in a tab.</p>'
+    + '<h3>Waiting</h3><div class="rowset">' + (waiting.map(a => '<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(a.symbol) + ' ' + (a.direction === 'above' ? '≥ ' : '≤ ') + fmt(a.price) + '</b><small>' + esc(a.note || 'Set ' + a.created.slice(0, 10)) + '</small></span><button class="x" data-unalert="' + a.id + '" aria-label="Remove">✕</button></div>').join('') || '<p class="muted" style="padding:12px">No alerts yet.</p>') + '</div>'
+    + (rang.length ? '<h3>Rang</h3><div class="rowset">' + rang.map(a => '<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(a.symbol) + ' ' + fmt(a.price) + '</b><small>' + esc(new Date(a.triggered).toLocaleString()) + ' at ' + fmt(a.triggeredAt) + '</small></span><button class="x" data-unalert="' + a.id + '" aria-label="Remove">✕</button></div>').join('') + '</div>' : ''));
+  $('aAdd').onsubmit = async e => { e.preventDefault(); try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch {} await api('/api/alerts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: $('aSym').value, price: +$('aPrice').value, direction: $('aDir').value, note: $('aNote').value }) }); renderAlerts(); };
+}
+
+async function renderJournal() {
+  const which = S.jWhich || 'mine';
+  const r = await api('/api/journal?which=' + which), s = r.stats;
+  P('<div class="seg" style="display:flex;margin-bottom:12px"><button type="button" style="flex:1" data-jw="mine" aria-pressed="' + (which === 'mine') + '">My trades</button><button type="button" style="flex:1" data-jw="sample" aria-pressed="' + (which === 'sample') + '">Practice week</button></div>'
+    + (which === 'sample' ? '<p class="muted">Fictional trades with mistakes planted in them. Ask your AI to find them.</p>' : '')
+    + '<div class="stats"><div class="stat"><b class="num">' + s.trades + '</b><span>Trades</span></div><div class="stat"><b class="num">' + (s.totalR >= 0 ? '+' : '') + s.totalR + 'R</b><span>Total result</span></div><div class="stat"><b class="num">' + (s.winRate ?? '–') + '%</b><span>Winners</span></div><div class="stat"><b class="num">' + s.ruleBreaks + '</b><span>Rule breaks (' + s.rLostOnBreaks + 'R)</span></div></div>'
+    + (r.rows.length ? '<div class="scroll"><table class="tbl num"><tr><th>Date</th><th>Trade</th><th>R</th><th>Rules</th><th>Felt</th></tr>' + r.rows.slice().reverse().map(x => '<tr><td>' + esc(x.date.slice(5)) + '</td><td><b>' + esc(x.symbol) + '</b> ' + esc(x.side) + '</td><td class="' + (parseFloat(x.result_r) >= 0 ? 'up' : 'down') + '">' + esc(x.result_r) + '</td><td>' + (x.rule_followed === 'no' ? '<span class="down">broke</span>' : esc(x.rule_followed)) + '</td><td>' + esc(x.emotion) + '</td></tr>').join('') + '</table></div>' : '')
+    + (which === 'mine' ? '<h3>Log a trade</h3><form class="form" id="jAdd"><div class="two"><label>Date<input name="date" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></label><label>Symbol<input name="symbol" value="' + esc(S.symbol) + '"></label></div><div class="two"><label>Side<select name="side"><option>long</option><option>short</option></select></label><label>Result (R)<input name="result_r" inputmode="decimal" placeholder="e.g. 1.5 or -1"></label></div><div class="two"><label>Entry<input name="entry" inputmode="decimal"></label><label>Exit<input name="exit" inputmode="decimal"></label></div><div class="two"><label>Followed my rules?<select name="rule_followed"><option>yes</option><option>no</option></select></label><label>How I felt<input name="emotion" placeholder="calm, rushed…"></label></div><label>Setup and notes<input name="notes"></label><button class="primary">Add to journal</button></form>' : '')
+    + '<div class="rowset" style="margin-top:12px"><div class="prompt"><span><q>Review my week</q><small>Top three leaks, with the trades that prove them</small></span>' + copyBtn('Read my journal with journal_get' + (which === 'sample' ? ' (which: sample)' : '') + '. Using only that data: 1) name my top three leaks (overtrading, revenge trades, early exits, rule breaks), each with the rows that prove it; 2) total R, win rate, number of rule breaks, R lost on rule-break trades; 3) one specific rule or habit change for next week. Do not guess at anything not in the data.') + '</div></div>'
+    + '<p class="muted" style="margin-top:10px">Your journal is data/journal.csv. It opens in Excel or Google Sheets too.</p>');
+  const f = $('jAdd'); if (f) f.onsubmit = async e => { e.preventDefault(); const d = Object.fromEntries(new FormData(f)); for (const k of ['entry', 'exit', 'result_r']) d[k] = d[k] === '' ? undefined : +d[k]; await api('/api/journal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }); renderJournal(); };
+}
+
+async function renderNews() {
+  P('<p class="muted">Loading headlines and today’s scheduled releases…</p>');
+  const n = await api('/api/news?symbols=' + [S.symbol, ...(S.watch || []).slice(0, 4)].join(','));
+  const today = n.calendar.filter(e => e.today), later = n.calendar.filter(e => !e.today).slice(0, 8);
+  P('<h3>Scheduled today (New York time)</h3>' + (today.length ? '<div class="cal">' + today.map(e => '<span class="t num">' + esc(e.timeET) + '</span><span class="e">' + esc(e.event) + ' <span class="muted">' + esc(e.impact) + '</span></span>').join('') + '</div>' : '<p class="muted">No high or medium impact US releases today.</p>')
+    + (later.length ? '<h3>Later this week</h3><div class="cal">' + later.map(e => '<span class="t num">' + esc(e.date.slice(5)) + '</span><span class="e">' + esc(e.timeET) + ' ' + esc(e.event) + '</span>').join('') + '</div>' : '')
+    + '<h3>Headlines</h3><div class="rowset">' + n.headlines.slice(0, 20).map(h => '<a class="pat" style="text-decoration:none" href="' + esc(h.link) + '" target="_blank" rel="noopener"><b>' + esc(h.title) + '</b><small>' + esc(h.source) + (h.time ? ' · ' + esc(new Date(h.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) : '') + '</small></a>').join('') + '</div>');
+}
+
+async function renderBots() {
+  const b = await api('/api/brief').catch(() => ({}));
+  P('<p>Routines run your process on a schedule. None of them can place a trade: Alphaline has no way to reach your orders.</p><div class="rowset">'
+    + '<div class="prompt"><span><q>Morning brief</q><small>Calendar, levels and headlines for your watchlist. Last: ' + esc(b.date || 'never') + '</small></span><button class="btn2" id="runBrief">Run now</button></div>'
+    + '<div class="prompt"><span><q>Every weekday at 8:30 AM</q><small>Windows: run scripts\\schedule-windows.ps1 once. Mac: see SETUP.md. Your AI then writes the brief with your rules.</small></span><span></span></div>'
+    + '<div class="prompt"><span><q>Pre-open scan</q><small>Your top 5 by your rules, each morning</small></span>' + copyBtn('Read my rules with rules_get, then run scan_watchlist. Score every symbol against each of my rules and give me a top 5. Use only the numbers the scan returns.') + '</div>'
+    + '<div class="prompt"><span><q>Sunday review</q><small>Weekly journal review, 30 minutes</small></span>' + copyBtn('Read my journal with journal_get. Name my top three leaks with the rows that prove them, total R, win rate and rule breaks, and one change for next week. Use only the data.') + '</div>'
+    + '<div class="prompt"><span><q>Price alerts</q><small>On whenever Alphaline is open in a tab</small></span><span></span></div></div><p class="muted" id="runOut" style="margin-top:10px"></p>');
+  $('runBrief').onclick = async () => { $('runBrief').textContent = 'Running…'; try { await api('/api/run?job=brief', { method: 'POST' }); $('runOut').textContent = 'Brief written. Open Today to read it.'; } catch (e) { $('runOut').textContent = e.message; } $('runBrief').textContent = 'Run now'; };
+}
+
+async function renderDom() {
+  const d = await api('/api/depth?symbol=' + S.symbol).catch(() => ({ supported: false }));
+  if (!d.supported) return P('<p><b>Depth of market</b> (also called Level 2) shows the buy and sell orders waiting at each price around the last trade.</p><p>Free stock data doesn’t include it, so this stays empty on the demo, CSV, Alpaca and Schwab sources. It lights up when you plug in a source that has depth: some paid stock feeds and most crypto exchanges.</p><div class="rowset"><div class="prompt"><span><q>Add depth to my data source</q><small>Your AI adds getDepth() to a provider</small></span>' + copyBtn('Read providers/_template.js and add a getDepth(symbol) function to my data provider that returns { bids: [[price, size]], asks: [[price, size]] } from my data source’s order-book endpoint. Keep my keys in config.local.json.') + '</div></div>');
+  const row = ([p, s], side) => side === 'ask' ? '<span></span><span class="num">' + fmt(p) + '</span><span class="num down">' + s + '</span>' : '<span class="num up" style="text-align:right">' + s + '</span><span class="num">' + fmt(p) + '</span><span></span>';
+  P('<div class="ladder">' + d.asks.slice(0, 12).reverse().map(a => row(a, 'ask')).join('') + d.bids.slice(0, 12).map(b => row(b, 'bid')).join('') + '</div>');
+}
+
+const CODE_TEMPLATE = "// Your own indicator. compute() gets candles oldest first: { time, open, high, low, close, volume }\n// and returns [{ time, value }]. Return { lines: [...] } for several lines.\nexport default {\n  label: 'Distance from 21 EMA (%)',\n  pane: 'lower',\n  guides: [0],\n  compute(bars, { length = 21 } = {}) {\n    const k = 2 / (length + 1);\n    let ema = bars[0]?.close;\n    return bars.map(b => {\n      ema = b.close * k + ema * (1 - k);\n      return { time: b.time, value: ((b.close - ema) / ema) * 100 };\n    });\n  },\n};\n";
+async function renderCode(name) {
+  const list = (await api('/api/indicators/config')).filter(x => x.type === 'custom');
+  let code = CODE_TEMPLATE;
+  if (name) { const r = await api('/api/indicator-code?name=' + encodeURIComponent(name)); code = r.code || CODE_TEMPLATE; }
+  P('<p>Your own indicators, in plain JavaScript. Easiest: describe what you want to your AI and let it write the file. You can also paste or edit code here.</p>'
+    + '<div class="rowset"><div class="prompt"><span><q>Write me an indicator</q><small>Describe it in plain words; your AI builds it and turns it on</small></span>' + copyBtn('Write a custom Alphaline indicator that [describe what you want to see]. Follow indicators/rsi.js: export default { label, pane, compute(bars) } returning [{ time, value }]. Save it in the indicators folder, then turn it on with indicator_set (type custom). Plain arithmetic on the candles only.') + '</div></div>'
+    + (list.length ? '<h3>Yours</h3><div class="rowset">' + list.map(x => '<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(x.label || x.id) + '</b><small>indicators/' + esc(x.file || x.id) + '.js · ' + (x.enabled !== false ? 'on' : 'off') + '</small></span><button class="btn2" data-edit="' + esc(x.file || x.id) + '">Edit</button></div>').join('') + '</div>' : '')
+    + '<h3>' + (name ? 'Edit ' + esc(name) : 'New indicator') + '</h3><form class="form" id="cForm"><div class="two"><label>File name<input id="cName" value="' + esc(name || '') + '" placeholder="e.g. emaDistance"' + (name ? ' readonly' : '') + '></label><label>Where<select id="cPane"><option value="lower">Below the chart</option><option value="price">On the candles</option></select></label></div><label>Code<textarea id="cCode" spellcheck="false">' + esc(code) + '</textarea></label><div class="btnrow"><button class="primary">Save and show</button>' + (name ? '<button type="button" class="btn2" id="cNew">New</button>' : '') + '</div><p class="muted" id="cOut"></p></form>');
+  $('cForm').onsubmit = async e => { e.preventDefault(); try { await api('/api/indicator-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: $('cName').value.trim(), code: $('cCode').value, pane: $('cPane').value }) }); await loadIndicators(); $('cOut').textContent = 'Saved. It’s on your chart now.'; } catch (err) { $('cOut').textContent = err.message; } };
+  if ($('cNew')) $('cNew').onclick = () => renderCode();
+}
+
+const MODEL_GUIDE = '<h3>Plug in your own AI</h3><p>Double-click <b>Connect Claude</b> in your Alphaline folder, then quit and reopen Claude. Codex gets connected at the same time if you have it. Your own subscription does the work: no credits, no extra bill.</p>'
+  + '<h3>Which model and effort to pick</h3><div class="rowset" style="padding:0 12px">'
+  + '<div style="padding:10px 0"><b>Everyday: marking charts, the morning brief, quick questions</b><p class="muted" style="margin:4px 0 0">Claude Sonnet at normal effort. In Codex: the default model at medium reasoning. Fast, and it leaves room in your plan’s limits.</p></div>'
+  + '<div style="padding:10px 0;border-top:1px solid var(--line)"><b>Harder: writing or fixing an indicator, a month of journal review, turning your rules into a checklist</b><p class="muted" style="margin:4px 0 0">Claude Opus with extended thinking on. In Codex: high reasoning. Slower and uses more of your limits, so save it for these.</p></div>'
+  + '<div style="padding:10px 0;border-top:1px solid var(--line)"><b>Skip the smallest, fastest models for rule checks</b><p class="muted" style="margin:4px 0 0">Models like Haiku are quick but more likely to skip a rule. Names change over time: pick the current Sonnet or Opus.</p></div></div>';
+const RENDER = { today: renderToday, watch: renderWatch, screener: renderScreener, patterns: renderPatterns, signals: renderSignals, alerts: renderAlerts, journal: renderJournal, news: renderNews, bots: renderBots, dom: renderDom, marks: async () => renderMarks(), code: () => renderCode(), ai: async () => { renderAI(); $('panel').insertAdjacentHTML('beforeend', MODEL_GUIDE); } };
+const renderTab = () => { $('panelTitle').textContent = TITLES[S.tab] || ''; return Promise.resolve().then(() => (RENDER[S.tab] || renderToday)()).catch(e => P('<p class="muted">' + esc(e.message) + '</p>')); };
 
 $('panel').addEventListener('click', async e => {
-  const t = e.target;
+  const t = e.target.closest('[data-open],[data-unwatch],[data-unalert],[data-jw],[data-edit],[data-copytext],[data-copy],[data-keep],[data-del]') || e.target;
+  if (t.dataset.unwatch) { e.stopPropagation(); S.watch = (S.watch || []).filter(s => s !== t.dataset.unwatch); store.set('watch', S.watch); return renderWatch(); }
+  if (t.dataset.unalert) { await api('/api/alerts?id=' + t.dataset.unalert, { method: 'DELETE' }); return renderAlerts(); }
+  if (t.dataset.jw) { S.jWhich = t.dataset.jw; return renderJournal(); }
+  if (t.dataset.edit) return renderCode(t.dataset.edit);
+  if (t.dataset.copytext != null) { try { await navigator.clipboard.writeText(t.dataset.copytext); t.textContent = 'Copied'; } catch { t.textContent = 'Select and copy'; } setTimeout(() => (t.textContent = 'Copy'), 1500); return; }
+  if (t.dataset.open) return open(t.dataset.open);
   if (t.dataset.copy != null) {
     const text = PROMPTS[+t.dataset.copy][0].replace('{S}', S.symbol);
     try { await navigator.clipboard.writeText(text); t.textContent = 'Copied'; } catch { t.textContent = 'Select and copy'; }
@@ -508,6 +707,56 @@ $('panel').addEventListener('change', e => {
   const k = e.target.dataset.layer; if (!k) return;
   e.target.checked ? S.hidden.delete(k) : S.hidden.add(k);
   store.set('hidden', [...S.hidden]); loadDrawings();
+});
+
+// Drawing tools. Levels, zones and alerts are saved as Alphaline marks your AI can read; lines, Fibonacci, text and brush use the chart's own tools.
+const TOOL_HINT = { hline: 'Click the chart to place a level', box: 'Click the top of the zone, then the bottom', alert: 'Click the price to be alerted at', segment: 'Click two points', rayLine: 'Click two points', fibonacciLine: 'Click the low, then the high', simpleAnnotation: 'Click where the note goes', brush: 'Press and drag to draw' };
+function setTool(t) {
+  S.tool = t; S.pending = null;
+  document.querySelectorAll('#tools button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === t));
+  $('toolHint').hidden = !TOOL_HINT[t]; $('toolHint').textContent = (TOOL_HINT[t] || '') + ' · Esc to cancel';
+  if (['segment', 'rayLine', 'fibonacciLine', 'simpleAnnotation', 'brush'].includes(t)) {
+    const extra = t === 'simpleAnnotation' ? { extendData: (prompt('Note text') || '').slice(0, 60) || 'Note' } : {};
+    chart.createOverlay({ name: t, groupId: 'you', ...extra, styles: { line: { color: css('--you') }, text: { color: css('--fg') } },
+      onDrawEnd: ({ overlay }) => { saveOverlay(overlay); setTool('cursor'); return false; } });
+  }
+}
+async function saveOverlay(o) {
+  const points = (o.points || []).map(p => ({ timestamp: p.timestamp, value: p.value }));
+  await api('/api/drawings?symbol=' + encodeURIComponent(S.symbol), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'overlay', name: o.name, points, label: o.name === 'simpleAnnotation' ? o.extendData : ({ segment: 'Trend line', rayLine: 'Ray', fibonacciLine: 'Fibonacci', brush: 'Brush' }[o.name] || o.name), text: o.extendData }) });
+}
+function drawUserOverlays() {
+  chart.removeOverlay({ groupId: 'you' });
+  for (const d of S.drawings.filter(d => d.type === 'overlay' && visible(d))) {
+    chart.createOverlay({ name: d.name, id: 'u_' + d.id, groupId: 'you', points: d.points, extendData: d.text, lock: false, styles: { line: { color: css('--you') }, text: { color: css('--fg') } },
+      onRightClick: () => { if (confirm('Delete this drawing?')) api('/api/drawings?symbol=' + encodeURIComponent(S.symbol) + '&id=' + d.id, { method: 'DELETE' }).then(loadDrawings); return true; },
+      onPressedMoveEnd: async ({ overlay }) => { await api('/api/drawings?symbol=' + encodeURIComponent(S.symbol) + '&id=' + d.id, { method: 'DELETE' }); await saveOverlay(overlay); } });
+  }
+}
+document.querySelectorAll('#tools button').forEach(b => b.onclick = async () => {
+  const t = b.dataset.tool;
+  if (t === 'clear') {
+    const mine = S.drawings.filter(d => d.source === 'you');
+    if (!mine.length) return showErr('You have no drawings on ' + S.symbol + '.');
+    if (!confirm('Remove your ' + mine.length + ' drawing(s) on ' + S.symbol + '? Your AI’s marks stay.')) return;
+    await api('/api/drawings/mine?symbol=' + encodeURIComponent(S.symbol), { method: 'DELETE' }); return loadDrawings();
+  }
+  setTool(S.tool === t ? 'cursor' : t);
+});
+addEventListener('keydown', e => { if (e.key === 'Escape' && S.tool && S.tool !== 'cursor') setTool('cursor'); });
+$('chart').addEventListener('click', async e => {
+  if (!['hline', 'box', 'alert'].includes(S.tool)) return;
+  const r = $('chart').getBoundingClientRect();
+  const pt = chart.convertFromPixel([{ x: e.clientX - r.left, y: e.clientY - r.top }], { paneId: MAIN, absolute: true })[0];
+  if (!pt || pt.value == null) return;
+  const price = Math.round(pt.value * 100) / 100, sym = encodeURIComponent(S.symbol);
+  const post = body => api('/api/drawings?symbol=' + sym, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (S.tool === 'hline') { await post({ type: 'level', price, label: 'My level ' + fmt(price), kind: 'custom' }); setTool('cursor'); return loadDrawings(); }
+  if (S.tool === 'alert') { setTool('cursor'); return addAlertAt(price); }
+  if (!S.pending) { S.pending = { price, time: pt.timestamp ? Math.floor(pt.timestamp / 1000) : null }; $('toolHint').textContent = 'Now click the other edge of the zone · Esc to cancel'; return; }
+  const a = S.pending; setTool('cursor');
+  await post({ type: 'zone', top: Math.max(a.price, price), bottom: Math.min(a.price, price), from: a.time, label: 'My zone', kind: 'custom' });
+  loadDrawings();
 });
 
 function openSheet(html) { $('sheetBody').innerHTML = html; $('sheet').hidden = false; }
@@ -565,7 +814,7 @@ for (const tf of ['5m', '15m', '1h', '1d']) { const b = document.createElement('
 $('sym').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.value.trim()) open(e.target.value.trim()); });
 $('auto').onclick = async () => { const b = $('auto'); b.disabled = true; b.textContent = 'Marking…'; try { await api('/api/auto?symbol=' + encodeURIComponent(S.symbol), { method: 'POST' }); await loadDrawings(); S.tab = 'marks'; syncTabs(); renderTab(); } catch (e) { showErr(e.message); } b.disabled = false; b.textContent = 'Mark key levels'; };
 function syncTabs() { document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', x.dataset.tab === S.tab)); }
-document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { S.tab = b.dataset.tab; syncTabs(); renderTab(); });
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { S.tab = b.dataset.tab; store.set('tab', S.tab); syncTabs(); renderTab(); });
 $('welcomeOk').onclick = () => { $('welcome').hidden = true; store.set('welcomed', true); };
 
 const live = !new URLSearchParams(location.search).has('snapshot');
@@ -588,11 +837,12 @@ if (live) {
   applyTheme();
   const c = await api('/api/config');
   $('feed').textContent = c.provider.id === 'demo' ? 'Delayed demo prices' : c.provider.label;
-  for (const s of c.watchlist) { const b = document.createElement('button'); b.textContent = s; b.onclick = () => open(s); $('watch').append(b); }
+  if (!S.watch) S.watch = c.watchlist.slice();
+  await loadAlerts(); if (live) setInterval(() => checkAlerts().catch(() => {}), 30000);
   const q = new URLSearchParams(location.search);
   if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme'), applyTheme();
   if (!store.get('welcomed', false) && !q.has('nowelcome')) $('welcome').hidden = false;
-  if (q.get('tab')) S.tab = q.get('tab'), syncTabs();
+  S.tab = q.get('tab') || store.get('tab', 'today'); syncTabs();
   await open(q.get('symbol') || c.state?.symbol || c.watchlist[0] || 'SPY', q.get('tf') || c.state?.tf || '5m');
 })();
 </script>
