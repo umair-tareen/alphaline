@@ -30,7 +30,9 @@ args = ["C:/path/to/alphaline/mcp.js"]
 { "mcpServers": { "alphaline": { "command": "node", "args": ["C:/path/to/alphaline/mcp.js"] } } }
 ```
 
-Check it works: `npm test` calls every tool once.
+**An AI without MCP** (Pi, a local model, a script): call the same tools from a shell with `node scripts/tool.js <tool> '<json>'`, for example `node scripts/tool.js chart_levels '{"symbol":"SPY"}'`. `node scripts/tool.js list` shows them all.
+
+Check it works: `npm test` calls every tool once; `npm run test:unit` checks the calculations.
 
 ## 3. Morning brief on a schedule
 `npm run brief` writes the facts (calendar, levels, headlines). `scripts/morning.ps1` (Windows) or `scripts/morning.sh` (Mac/Linux) runs that, then asks Claude Code or Codex to write your brief with your rules.
