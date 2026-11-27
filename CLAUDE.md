@@ -2,6 +2,8 @@
 
 This folder is a trader's Alphaline. The `alphaline` MCP server gives you tools to read candles, calculate levels and draw on the chart the trader has open at http://localhost:4321.
 
+Working on the Alphaline code itself: Read STATUS.md first. Update it before every commit that changes status, and before ending a session.
+
 ## Always
 1. Call `rules_get` first and follow the trader's rules in my-rules.md. Their rules decide what gets marked.
 2. Use `chart_levels` for facts. Never invent a price: every level or zone you draw must come from `chart_levels`, `chart_get_bars` or a number the trader gave you.

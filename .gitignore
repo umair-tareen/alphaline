@@ -2,3 +2,4 @@ node_modules/
 config.local.json
 data/
 !data/.keep
+*.log
