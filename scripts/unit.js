@@ -43,6 +43,13 @@ const L = computeLevels('TEST', intra, daily, []);
 assert.equal(L.atr, 8, 'ATR from finished days only');
 assert.equal(L.today.low, 102.8); assert.equal(L.gap.filled, false);
 
+// 4 AM pre-market from a second feed counts toward the pre-market high, and its one-bar bad print does not.
+const early = [bar('2026-11-27 04:01', 251.9, 252.75, 250.6, 251), bar('2026-11-27 08:04', 250.9, 250.95, 250.85, 250.9),
+  bar('2026-11-27 08:05', 250.9, 250.98, 243.82, 243.82), bar('2026-11-27 08:06', 250.8, 250.9, 250.7, 250.8)];
+const L2 = computeLevels('TEST', [bar('2026-11-25 15:55', 244, 244.4, 244, 244.37), bar('2026-11-27 07:00', 250, 251.33, 249.9, 251),
+  bar('2026-11-27 09:30', 250.45, 251, 250, 250.9), bar('2026-11-27 09:35', 250.9, 251.2, 250.8, 251.1)], daily, [], early);
+assert.equal(L2.premarket.high, 252.75); assert.equal(L2.premarket.from, '04:01'); assert.equal(L2.premarket.low, 249.9);
+
 // Position size checks the stop side when the side is given.
 assert.throws(() => sizePosition({ account: 10000, riskPct: 1, entry: 100, stop: 110, side: 'long' }), /below/);
 assert.equal(sizePosition({ account: 10000, riskPct: 1, entry: 100, stop: 98, side: 'long' }).shares, 50);
