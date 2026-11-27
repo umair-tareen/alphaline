@@ -12,7 +12,8 @@
     "mcp": "node mcp.js",
     "brief": "node brief.js",
     "schwab-login": "node scripts/schwab-login.js",
-    "test": "node scripts/selftest.js"
+    "test": "node scripts/selftest.js",
+    "test:unit": "node scripts/unit.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

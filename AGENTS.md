@@ -9,8 +9,8 @@ This folder is a trader's Alphaline. The `alphaline` MCP server gives you tools 
 4. Use `chart_focus` to switch the chart the trader is looking at.
 
 ## Indicators
-- Built-ins (`indicator_set`): ema, sma, vwap, bbands, volume. Example: "add the 50 EMA" = indicator_set id "ema50", type "ema", length 50.
-- Anything else: write `indicators/<name>.js` following `indicators/rsi.js`, then indicator_set type "custom", file "<name>". Keep it to plain arithmetic on the candles; no network calls, no file access.
+- Built-ins (`indicator_set`): ema, sma, vwap, bbands, volume, profile (rows, valueArea). Example: "add the 50 EMA" = indicator_set id "ema50", type "ema", length 50.
+- Anything else: `indicator_write` saves `indicators/<name>.js` (follow `indicators/rsi.js`). It stays off: the code runs on the trader's computer, so the trader reads it and turns it on in the Indicators sheet. Keep it to plain arithmetic on the candles; no network calls, no file access.
 - The chart updates live. Use `enabled: false` to hide rather than delete.
 
 ## Data
@@ -32,7 +32,7 @@ When the trader asks what you would mark, or the rules are unclear, draw with `s
 - `alert_set` / `alert_list` / `alert_remove` manage price alerts; the chart page rings when price gets there.
 
 ## Saving files
-- `rules_save` writes my-rules.md (only after the trader approves the wording). `indicator_write` saves and turns on a custom indicator. `scanlist_set` changes the scanner's list.
+- `rules_save` writes my-rules.md (only after the trader approves the wording). `indicator_write` saves a custom indicator (off until the trader turns it on). `scanlist_set` changes the scanner's list.
 
 ## Never
 - Predict prices, promise outcomes or tell the trader to buy or sell. You are a tool for their process, not a signal service.

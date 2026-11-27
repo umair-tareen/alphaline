@@ -11,6 +11,8 @@
 
 You can switch sources in the app (**Data**) or with `"provider"` in config.json.
 
+**Pre-market from 4:00 AM:** Schwab's extended-hours data starts at 7:00, and the highs and lows between 4:00 and 7:00 are often the levels that matter. If Alpaca keys are set (free account; in config.local.json or the `APCA_API_KEY_ID` / `APCA_API_SECRET_KEY` environment variables), the pre-market high and low use Alpaca's full consolidated tape from 4:00 whatever the chart source is. Alpaca serves that tape free once it is 15 minutes old.
+
 Copy `config.local.example.json` to `config.local.json` and fill in only the provider you use.
 
 **Webull:** Webull publishes its own official MCP server (`webull-openapi-mcp`, run with `uvx webull-openapi-mcp serve`). Add it next to the desk so your AI can read Webull quotes and your account, and set `WEBULL_TOOLSETS=account,market-data` to keep it read-only. It needs a Webull OpenAPI key and an OpenAPI market data subscription. A Webull chart feed for the desk itself is planned.
@@ -30,7 +32,9 @@ args = ["C:/path/to/alphaline/mcp.js"]
 { "mcpServers": { "alphaline": { "command": "node", "args": ["C:/path/to/alphaline/mcp.js"] } } }
 ```
 
-Check it works: `npm test` calls every tool once.
+**An AI without MCP** (Pi, a local model, a script): call the same tools from a shell with `node scripts/tool.js <tool> '<json>'`, for example `node scripts/tool.js chart_levels '{"symbol":"SPY"}'`. `node scripts/tool.js list` shows them all.
+
+Check it works: `npm test` calls every tool once; `npm run test:unit` checks the calculations.
 
 ## 3. Morning brief on a schedule
 `npm run brief` writes the facts (calendar, levels, headlines). `scripts/morning.ps1` (Windows) or `scripts/morning.sh` (Mac/Linux) runs that, then asks Claude Code or Codex to write your brief with your rules.
