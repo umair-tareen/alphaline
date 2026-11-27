@@ -137,7 +137,13 @@ const routes = {
   },
 };
 
+// Only this computer's browser may talk to the desk. The Host check stops DNS-rebinding pages; the
+// X-Alphaline header on writes cannot be sent cross-site without a CORS preflight, which this server never grants.
+const LOCAL_HOSTS = new Set([`localhost:${PORT}`, `127.0.0.1:${PORT}`]);
+
 http.createServer(async (req, res) => {
+  if (!LOCAL_HOSTS.has(req.headers.host)) return send(res, 403, { error: `Open Alphaline at http://localhost:${PORT}` });
+  if (req.method !== 'GET' && req.headers['x-alphaline'] !== '1') return send(res, 403, { error: 'Changes must come from the Alphaline page' });
   const url = new URL(req.url, 'http://localhost');
   const handler = routes[`${req.method} ${url.pathname}`];
   if (!handler) return send(res, 404, { error: 'Not found' });
@@ -146,7 +152,8 @@ http.createServer(async (req, res) => {
 }).on('error', e => {
   if (e.code === 'EADDRINUSE') { console.log(`Alphaline is already running at http://localhost:${PORT}`); if (process.argv.includes('--open')) exec(process.platform === 'win32' ? `start "" "http://localhost:${PORT}"` : `open "http://localhost:${PORT}"`); }
   else throw e;
-}).listen(PORT, '127.0.0.1', () => {
+}).listen(PORT, '127.0.0.1', async () => {
+  await loadPlugins();
   const url = `http://localhost:${PORT}`;
   console.log(`Alphaline is running: ${url}  (data: ${providerInfo().label})`);
   console.log('Keep this window open while you use Alphaline. Close it to stop.');

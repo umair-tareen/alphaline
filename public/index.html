@@ -249,7 +249,7 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '
 const fmt = v => v == null ? '–' : Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const store = { get(k, d) { try { const v = localStorage.getItem('desk:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('desk:' + k, JSON.stringify(v)); } catch {} } };
 const S = { symbol: 'SPY', tf: '5m', bars: [], drawings: [], levels: null, lines: [], tab: 'today', ind: null, hidden: new Set(store.get('hidden', [])) };
-const TF_LABEL = { '5m': '5 min', '15m': '15 min', '1h': '1 hour', '1d': '1 day' };
+const TF_LABEL = { '5m': '5 min', '15m': '15 min', '1h': '1 hour', '4h': '4 hour', '1d': '1 day' };
 
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const MAIN = 'candle_pane', VOLP = 'vol_pane', LOWP = 'lower_pane';
@@ -257,7 +257,7 @@ const fontStack = () => getComputedStyle(document.body).fontFamily;
 const chart = klinecharts.init('chart', { timezone: 'America/New_York', locale: 'en-US' });
 // KLineChart doesn't watch its box, so tell it whenever the layout changes size.
 new ResizeObserver(() => chart.resize()).observe(document.getElementById('chart'));
-const PERIOD = { '5m': { type: 'minute', span: 5 }, '15m': { type: 'minute', span: 15 }, '1h': { type: 'hour', span: 1 }, '1d': { type: 'day', span: 1 } };
+const PERIOD = { '5m': { type: 'minute', span: 5 }, '15m': { type: 'minute', span: 15 }, '1h': { type: 'hour', span: 1 }, '4h': { type: 'hour', span: 4 }, '1d': { type: 'day', span: 1 } };
 const toK = b => ({ timestamp: b.time * 1000, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume });
 let pushBar = null;
 chart.setDataLoader({
@@ -327,7 +327,7 @@ function colorOf(d) {
 const nameOf = d => (d.source === 'ai' || d.source === 'you' ? d.label : (KINDS[d.kind]?.[0] || d.label)) || 'Mark';
 const visible = d => !S.hidden.has(d.source === 'ai' ? 'ai' : d.source === 'you' ? 'you' : d.kind?.replace(/-(high|low|close|bull|bear)$/, ''));
 
-const api = async (path, opts) => { const r = await fetch(path, opts); const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j; };
+const api = async (path, opts = {}) => { const r = await fetch(path, { ...opts, headers: { 'X-Alphaline': '1', ...opts.headers } }); const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j; };
 function showErr(m) { $('err').hidden = !m; $('err').textContent = m || ''; }
 addEventListener('error', e => showErr('Something went wrong: ' + e.message));
 function idxAt(t) { const b = S.bars; if (t == null || !b.length) return 0; let lo = 0, hi = b.length - 1; if (t > b[hi].time) return hi; while (lo < hi) { const m = (lo + hi) >> 1; if (b[m].time < t) lo = m + 1; else hi = m; } return lo; }
@@ -594,7 +594,12 @@ async function loadAlerts() { S.alerts = await api('/api/alerts').catch(() => []
 function chime() {
   try { const a = new (window.AudioContext || window.webkitAudioContext)(); [880, 1320].forEach((f, i) => { const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; o.connect(g); g.connect(a.destination); const t = a.currentTime + i * 0.18; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35); o.start(t); o.stop(t + 0.4); }); } catch {}
 }
+let checking = false;
 async function checkAlerts() {
+  if (checking) return; checking = true;
+  try { await checkAlertsOnce(); } finally { checking = false; }
+}
+async function checkAlertsOnce() {
   const live = (S.alerts || []).filter(a => !a.triggered); if (!live.length) return;
   const q = await api('/api/quotes?symbols=' + [...new Set(live.map(a => a.symbol))].join(',')).catch(() => []);
   for (const a of live) {
@@ -778,7 +783,7 @@ $('dataBtn').onclick = async () => {
   const r = await api('/api/providers');
   const about = { demo: 'Free delayed prices. Works with no setup. For learning.', csv: 'Drop exported files into data/import. Works with any broker that can export CSV.', alpaca: 'Free account with live IEX prices. Add your keys in config.local.json.', schwab: 'thinkorswim accounts. Needs a Schwab developer app, then npm run schwab-login.' };
   openSheet('<button class="ghost done">Done</button><h2>Your data</h2><p>Pick where prices come from. Everything stays on this computer.</p><div class="rowset">'
-    + r.providers.map(p => '<label class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(p.label) + (p.builtIn ? '' : '<span class="tag">Plug-in</span>') + '</b><small>' + esc(about[p.id] || 'Your own data source from the providers folder.') + (p.needsSetup ? ' Needs setup first.' : '') + (p.imports ? ' Files: ' + (p.imports.length ? p.imports.join(', ') : 'none yet') + '.' : '') + '</small></span><input type="radio" name="prov" class="toggle" data-prov="' + esc(p.id) + '"' + (p.id === r.current ? ' checked' : '') + '></label>').join('')
+    + r.providers.map(p => '<label class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(p.label) + (p.builtIn ? '' : '<span class="tag">Plug-in</span>') + '</b><small>' + esc(about[p.id] || 'Your own data source from the providers folder.') + (p.needsSetup ? ' Needs setup first.' : '') + (p.imports ? ' Files: ' + (p.imports.length ? p.imports.join(', ') : 'none yet') + '.' : '') + '</small></span><input type="radio" name="prov" class="toggle" data-prov="' + esc(p.id) + '"' + (p.id === r.current ? ' checked' : '') + (p.needsSetup && p.id !== r.current ? ' disabled title="Needs setup first (see SETUP.md)"' : '') + '></label>').join('')
     + '</div><p class="muted">Another broker or data service? Ask your AI: “Write an Alphaline provider for my broker.” It copies providers/_template.js and it shows up here.</p>');
 };
 $('sheetBody').addEventListener('change', async e => {
@@ -792,13 +797,15 @@ $('indBtn').onclick = async () => {
 };
 $('sheetBody').addEventListener('change', async e => { const id = e.target.dataset.ind; if (!id) return; await api('/api/indicators/toggle?id=' + encodeURIComponent(id) + '&enabled=' + e.target.checked, { method: 'POST' }); await loadIndicators(); });
 
+let loadId = 0;
 async function open(symbol, tf) {
-  S.symbol = symbol.toUpperCase(); if (tf) S.tf = tf; $('sym').value = '';
-  document.querySelectorAll('#tfs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tf === S.tf));
-  document.querySelectorAll('#watch button').forEach(b => b.setAttribute('aria-pressed', b.textContent === S.symbol));
+  const id = ++loadId, want = symbol.toUpperCase(), tf2 = tf || S.tf; $('sym').value = '';
   try {
-    const r = await api('/api/bars?symbol=' + encodeURIComponent(S.symbol) + '&tf=' + S.tf);
-    S.bars = r.bars;
+    const r = await api('/api/bars?symbol=' + encodeURIComponent(want) + '&tf=' + tf2);
+    if (id !== loadId) return;  // the trader already asked for something else
+    S.symbol = want; S.tf = tf2; S.bars = r.bars;
+    document.querySelectorAll('#tfs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tf === S.tf));
+    document.querySelectorAll('#watch button').forEach(b => b.setAttribute('aria-pressed', b.textContent === S.symbol));
     showErr(r.stale ? 'Showing the last saved prices. ' + r.error : '');
     const sym = chart.getSymbol(), per = chart.getPeriod();
     if (sym?.ticker === S.symbol && per?.type === PERIOD[S.tf].type && per?.span === PERIOD[S.tf].span) chart.resetData();
@@ -810,7 +817,7 @@ async function open(symbol, tf) {
   } catch (e) { showErr(e.message); }
 }
 
-for (const tf of ['5m', '15m', '1h', '1d']) { const b = document.createElement('button'); b.textContent = TF_LABEL[tf]; b.dataset.tf = tf; b.onclick = () => open(S.symbol, tf); $('tfs').append(b); }
+for (const tf of ['5m', '15m', '1h', '4h', '1d']) { const b = document.createElement('button'); b.textContent = TF_LABEL[tf]; b.dataset.tf = tf; b.onclick = () => open(S.symbol, tf); $('tfs').append(b); }
 $('sym').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.value.trim()) open(e.target.value.trim()); });
 $('auto').onclick = async () => { const b = $('auto'); b.disabled = true; b.textContent = 'Marking…'; try { await api('/api/auto?symbol=' + encodeURIComponent(S.symbol), { method: 'POST' }); await loadDrawings(); S.tab = 'marks'; syncTabs(); renderTab(); } catch (e) { showErr(e.message); } b.disabled = false; b.textContent = 'Mark key levels'; };
 function syncTabs() { document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', x.dataset.tab === S.tab)); }
@@ -820,6 +827,8 @@ $('welcomeOk').onclick = () => { $('welcome').hidden = true; store.set('welcomed
 const live = !new URLSearchParams(location.search).has('snapshot');
 if (live) {
   const ev = new EventSource('/api/events');
+  let opened = false;  // after a dropped connection, fetch what changed while it was down
+  ev.onopen = () => { if (opened) { loadDrawings().catch(() => {}); loadIndicators().catch(() => {}); } opened = true; };
   ev.onmessage = async m => {
     const { what } = JSON.parse(m.data);
     if (what === 'drawings') loadDrawings().catch(() => {});
@@ -829,7 +838,8 @@ if (live) {
   };
   setInterval(async () => {
     if (document.hidden || S.tf === '1d') return;
-    try { const r = await api('/api/bars?symbol=' + encodeURIComponent(S.symbol) + '&tf=' + S.tf); const lastT = S.bars.at(-1)?.time; S.bars = r.bars; if (pushBar) for (const b of r.bars.filter(b => b.time >= lastT)) pushBar(toK(b)); renderQuote(); } catch {}
+    const id = loadId;
+    try { const r = await api('/api/bars?symbol=' + encodeURIComponent(S.symbol) + '&tf=' + S.tf); if (id !== loadId) return; const lastT = S.bars.at(-1)?.time; S.bars = r.bars; if (pushBar) for (const b of r.bars.filter(b => b.time >= lastT)) pushBar(toK(b)); renderQuote(); } catch {}
   }, 30000);
 }
 

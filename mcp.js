@@ -19,7 +19,7 @@ const server = new McpServer({ name: 'alphaline', version: '0.1.0' });
 const text = v => ({ content: [{ type: 'text', text: typeof v === 'string' ? v : JSON.stringify(v, null, 2) }] });
 const wrap = fn => async args => { try { return text(await fn(args)); } catch (e) { return { ...text('Error: ' + e.message), isError: true }; } };
 const Sym = z.string().describe('Ticker, e.g. SPY');
-const TF = z.enum(['5m', '15m', '1h', '1d']);
+const TF = z.enum(['5m', '15m', '1h', '4h', '1d']);
 const Color = z.string().optional().describe('Optional CSS colour; leave empty to use the colour for the kind');
 const Suggest = z.boolean().default(false).describe('true = show as a suggestion the trader can Keep or dismiss on the desk');
 const sug = s => (s ? { status: 'suggested' } : {});
@@ -69,7 +69,7 @@ server.tool('indicator_list', 'Indicators on the chart (indicators.json) and the
     return { indicators: loadIndicators(), customFiles: files };
   }));
 
-server.tool('indicator_set', 'Add or change an indicator (the chart updates live). Built-in types: ema, sma (length), vwap, bbands (length, mult), volume (avgLength, highlightAbove, highlightColor). For anything else write indicators/<name>.js (see indicators/rsi.js) and use type "custom" with file "<name>".',
+server.tool('indicator_set', 'Add or change an indicator (the chart updates live). Built-in types: ema, sma (length), vwap, bbands (length, mult), volume (avgLength, highlightAbove, highlightColor), profile (rows, valueArea). For anything else use indicator_write; the trader turns custom code on.',
   { id: z.string().regex(/^[a-zA-Z0-9_-]+$/).describe('e.g. ema50'), type: z.enum(['ema', 'sma', 'vwap', 'bbands', 'volume', 'profile', 'custom']).optional(),
     rows: z.number().int().min(8).max(80).optional(), valueArea: z.number().min(0.5).max(0.95).optional(),
     length: z.number().int().min(1).max(500).optional(), mult: z.number().optional(), color: z.string().optional(), width: z.number().int().min(1).max(4).optional(),
@@ -80,6 +80,10 @@ server.tool('indicator_set', 'Add or change an indicator (the chart updates live
     const i = list.findIndex(x => x.id === id);
     if (i < 0 && !patch.type) throw new Error('New indicator needs a type');
     const next = i < 0 ? { id, enabled: true, ...patch } : { ...list[i], ...patch };
+    // Custom indicator code runs inside the desk server, so only the trader switches new or changed code on.
+    const prev = list[i], file = x => x && (x.file || x.id);
+    if (next.type === 'custom' && next.enabled !== false && !(prev?.type === 'custom' && prev.enabled !== false && file(prev) === file(next)))
+      throw new Error(`Custom indicator code runs on this computer, so the trader turns it on in the Indicators sheet after reading indicators/${file(next)}.js.`);
     if (i < 0) list.push(next); else list[i] = next;
     saveIndicators(list);
     return next;
@@ -103,8 +107,8 @@ server.tool('journal_add', 'Add one trade to the journal.',
   wrap(t => 'Added: ' + addTrade(t)));
 
 server.tool('risk_size', 'Position size from the risk rule, calculated by code. Defaults come from config.json (account size, risk %).',
-  { entry: z.number(), stop: z.number(), account: z.number().optional(), riskPct: z.number().min(0.05).max(5).optional() },
-  wrap(({ entry, stop, account, riskPct }) => { const a = loadConfig().account || {}; return sizePosition({ entry, stop, account: account ?? a.size ?? 10000, riskPct: riskPct ?? a.riskPct ?? 1 }); }));
+  { entry: z.number(), stop: z.number(), side: z.enum(['long', 'short']).optional().describe('long needs the stop below entry, short above'), account: z.number().optional(), riskPct: z.number().min(0.05).max(5).optional() },
+  wrap(({ entry, stop, side, account, riskPct }) => { const a = loadConfig().account || {}; return sizePosition({ entry, stop, side, account: account ?? a.size ?? 10000, riskPct: riskPct ?? a.riskPct ?? 1 }); }));
 
 server.tool('alert_set', 'Set a price alert. The chart page plays a sound and shows a notification when price crosses it.',
   { symbol: Sym, price: z.number(), direction: z.enum(['above', 'below']), note: z.string().max(80).optional() }, wrap(a => addAlert(a)));
@@ -124,9 +128,9 @@ server.tool('indicator_write', 'Save a custom indicator file (indicators/<name>.
     if (/\b(import|require|process|fetch|child_process|fs)\b/.test(code.replace(/export default/g, ''))) throw new Error('Indicators may only do arithmetic on the candles: no import, require, process, fetch or file access.');
     const fs = await import('node:fs'); const path = await import('node:path');
     fs.mkdirSync(CUSTOM_DIR, { recursive: true }); fs.writeFileSync(path.join(CUSTOM_DIR, name + '.js'), code);
-    const list = loadIndicators(); const item = { id: name, type: 'custom', file: name, pane, color: color || '#a78bfa', width: 1, enabled: true };
+    const list = loadIndicators(); const item = { id: name, type: 'custom', file: name, pane, color: color || '#a78bfa', width: 1, enabled: false };
     const i = list.findIndex(x => x.id === name); if (i < 0) list.push(item); else list[i] = { ...list[i], ...item };
-    saveIndicators(list); return 'Saved indicators/' + name + '.js and turned it on. Check the chart.';
+    saveIndicators(list); return 'Saved indicators/' + name + '.js. It is off until the trader reads the file and turns it on in the Indicators sheet (the code runs on their computer).';
   }));
 
 server.tool('scanlist_set', 'Replace the scanner\'s symbol list (config.json scanList).', { symbols: z.array(z.string()).min(1).max(60) },
