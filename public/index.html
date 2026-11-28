@@ -96,6 +96,7 @@ aside{border-left:1px solid var(--line);background:var(--deep);display:grid;grid
 .form label{display:grid;gap:4px;font-size:12px;color:var(--mute)}
 .form input,.form select,.form textarea{font:inherit;font-size:13px;color:var(--fg);background:var(--raised);border:1px solid var(--line2);border-radius:7px;padding:7px 9px;min-width:0}
 .form textarea{font:12px/1.5 ui-monospace,Consolas,monospace;min-height:220px;resize:vertical}
+.codeview{font:12px/1.5 ui-monospace,Consolas,monospace;background:var(--raised);border:1px solid var(--line2);border-radius:7px;padding:9px;max-height:320px;overflow:auto;white-space:pre-wrap}
 .btnrow{display:flex;gap:8px;flex-wrap:wrap}
 .btn2{border:1px solid var(--line2);background:var(--raised);color:var(--fg);height:30px;padding:0 12px;border-radius:7px;font-size:13px;font-weight:500}
 .tbl{width:100%;border-collapse:collapse;font-size:12.5px}
@@ -347,8 +348,13 @@ function renderQuote(bar) {
 }
 chart.subscribeAction('onCrosshairChange', c => renderQuote(c && c.kLineData ? c.kLineData : null));
 
+// A reply for a symbol or timeframe the trader has already left is dropped, so it never lands on the new chart.
+const viewKey = () => S.symbol + '|' + S.tf;
 async function loadIndicators() {
-  S.ind = await api('/api/indicators?symbol=' + encodeURIComponent(S.symbol) + '&tf=' + S.tf);
+  const key = viewKey();
+  const ind = await api('/api/indicators?symbol=' + encodeURIComponent(S.symbol) + '&tf=' + S.tf);
+  if (key !== viewKey()) return;
+  S.ind = ind;
   for (const i of chart.getIndicators()) chart.removeIndicator({ id: i.id });
   const themed = l => l.key === 'ema9' ? css('--ema9') : l.key === 'ema21' ? css('--ema21') : l.color;
   for (const l of S.ind.lines) {
@@ -368,7 +374,10 @@ async function loadIndicators() {
 }
 
 async function loadDrawings() {
-  S.drawings = await api('/api/drawings?symbol=' + encodeURIComponent(S.symbol));
+  const sym = S.symbol;
+  const d = await api('/api/drawings?symbol=' + encodeURIComponent(sym));
+  if (sym !== S.symbol) return;
+  S.drawings = d;
   try { drawUserOverlays(); } catch {}
   if (S.tab === 'marks') renderMarks();
 }
@@ -677,7 +686,7 @@ async function renderCode(name) {
   let code = CODE_TEMPLATE;
   if (name) { const r = await api('/api/indicator-code?name=' + encodeURIComponent(name)); code = r.code || CODE_TEMPLATE; }
   P('<p>Your own indicators, in plain JavaScript. Easiest: describe what you want to your AI and let it write the file. You can also paste or edit code here.</p>'
-    + '<div class="rowset"><div class="prompt"><span><q>Write me an indicator</q><small>Describe it in plain words; your AI builds it and turns it on</small></span>' + copyBtn('Write a custom Alphaline indicator that [describe what you want to see]. Follow indicators/rsi.js: export default { label, pane, compute(bars) } returning [{ time, value }]. Save it with indicator_write so it shows on my chart. Plain arithmetic on the candles only.') + '</div></div>'
+    + '<div class="rowset"><div class="prompt"><span><q>Write me an indicator</q><small>Describe it in plain words; your AI builds it, then you read it and turn it on</small></span>' + copyBtn('Write a custom Alphaline indicator that [describe what you want to see]. Follow indicators/rsi.js: export default { label, pane, compute(bars) } returning [{ time, value }]. Save it with indicator_write so it shows on my chart. Plain arithmetic on the candles only.') + '</div></div>'
     + (list.length ? '<h3>Yours</h3><div class="rowset">' + list.map(x => '<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(x.label || x.id) + '</b><small>indicators/' + esc(x.file || x.id) + '.js · ' + (x.enabled !== false ? 'on' : 'off') + '</small></span><button class="btn2" data-edit="' + esc(x.file || x.id) + '">Edit</button></div>').join('') + '</div>' : '')
     + '<h3>' + (name ? 'Edit ' + esc(name) : 'New indicator') + '</h3><form class="form" id="cForm"><div class="two"><label>File name<input id="cName" value="' + esc(name || '') + '" placeholder="e.g. emaDistance"' + (name ? ' readonly' : '') + '></label><label>Where<select id="cPane"><option value="lower">Below the chart</option><option value="price">On the candles</option></select></label></div><label>Code<textarea id="cCode" spellcheck="false">' + esc(code) + '</textarea></label><div class="btnrow"><button class="primary">Save and show</button>' + (name ? '<button type="button" class="btn2" id="cNew">New</button>' : '') + '</div><p class="muted" id="cOut"></p></form>');
   $('cForm').onsubmit = async e => { e.preventDefault(); try { await api('/api/indicator-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: $('cName').value.trim(), code: $('cCode').value, pane: $('cPane').value }) }); await loadIndicators(); $('cOut').textContent = 'Saved. It’s on your chart now.'; } catch (err) { $('cOut').textContent = err.message; } };
@@ -793,9 +802,31 @@ $('sheetBody').addEventListener('change', async e => {
 $('indBtn').onclick = async () => {
   const list = await api('/api/indicators/config');
   openSheet('<button class="ghost done">Done</button><h2>Indicators</h2><p>Turn on what helps you. Fewer is clearer. To add something not listed, ask your AI.</p><div class="rowset">'
-    + list.map(x => '<label class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(x.label || (x.type === 'volume' ? 'Volume' : x.type === 'vwap' ? 'VWAP' : x.type === 'bbands' ? 'Bollinger Bands' : x.type === 'custom' ? (x.file || x.id).toUpperCase() : x.type === 'profile' ? 'Volume profile' : x.id)) + '</b><small>' + esc((IND_HELP[x.type] || IND_HELP.custom)(x.length || x.avgLength || 20)) + '</small></span><input type="checkbox" class="toggle" data-ind="' + esc(x.id) + '"' + (x.enabled !== false ? ' checked' : '') + '></label>').join('') + '</div>');
+    + list.map(x => '<label class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(x.label || (x.type === 'volume' ? 'Volume' : x.type === 'vwap' ? 'VWAP' : x.type === 'bbands' ? 'Bollinger Bands' : x.type === 'custom' ? (x.file || x.id).toUpperCase() : x.type === 'profile' ? 'Volume profile' : x.id)) + '</b><small>' + esc((IND_HELP[x.type] || IND_HELP.custom)(x.length || x.avgLength || 20)) + '</small></span><input type="checkbox" class="toggle" data-ind="' + esc(x.id) + '"' + (x.type === 'custom' ? ' data-file="' + esc(x.file || x.id) + '"' : '') + (x.enabled !== false ? ' checked' : '') + '></label>').join('') + '</div><div id="indReview"></div>');
 };
-$('sheetBody').addEventListener('change', async e => { const id = e.target.dataset.ind; if (!id) return; await api('/api/indicators/toggle?id=' + encodeURIComponent(id) + '&enabled=' + e.target.checked, { method: 'POST' }); await loadIndicators(); });
+const toggleInd = async (id, on) => { await api('/api/indicators/toggle?id=' + encodeURIComponent(id) + '&enabled=' + on, { method: 'POST' }); await loadIndicators(); };
+$('sheetBody').addEventListener('change', async e => {
+  const id = e.target.dataset.ind; if (!id) return;
+  try {
+    const file = e.target.dataset.file;
+    if (!file || !e.target.checked) return await toggleInd(id, e.target.checked);
+    // Custom code runs on this computer, so show it before it is turned on.
+    e.target.checked = false;
+    const r = await api('/api/indicator-code?name=' + encodeURIComponent(file));
+    const box = $('indReview');
+    box.innerHTML = '<h3>Read before turning on: indicators/' + esc(file) + '.js</h3><p class="muted">This code runs on your computer. Turn it on only if it is plain arithmetic on the candles, with no network, files or anything you do not understand.</p><pre class="codeview"></pre><p><button class="btn2" id="indOn">Turn it on</button> <button class="btn2" id="indNo">Cancel</button></p>';
+    box.querySelector('pre').textContent = r.code ?? '(file not found)';
+    box.scrollIntoView({ block: 'nearest' });
+    $('indNo').onclick = () => { box.innerHTML = ''; };
+    $('indOn').onclick = async () => { try { await toggleInd(id, true); e.target.checked = true; box.innerHTML = ''; } catch (err) { showErr(err.message); } };
+  } catch (err) { showErr(err.message); }
+});
+
+async function loadLevels() {
+  const sym = S.symbol;
+  const L = await api('/api/levels?symbol=' + encodeURIComponent(sym)).catch(() => null);
+  if (sym === S.symbol) S.levels = L;
+}
 
 let loadId = 0;
 async function open(symbol, tf) {
@@ -803,6 +834,7 @@ async function open(symbol, tf) {
   try {
     const r = await api('/api/bars?symbol=' + encodeURIComponent(want) + '&tf=' + tf2);
     if (id !== loadId) return;  // the trader already asked for something else
+    if (want !== S.symbol) { S.drawings = []; S.levels = null; }  // nothing from the old symbol is drawn on the new one
     S.symbol = want; S.tf = tf2; S.bars = r.bars;
     document.querySelectorAll('#tfs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tf === S.tf));
     document.querySelectorAll('#watch button').forEach(b => b.setAttribute('aria-pressed', b.textContent === S.symbol));
@@ -812,8 +844,11 @@ async function open(symbol, tf) {
     else { chart.setSymbol({ ticker: S.symbol, pricePrecision: 2, volumePrecision: 0 }); chart.setPeriod(PERIOD[S.tf]); }
     chart.setBarSpace(S.tf === '1d' ? 7 : 6);
     requestAnimationFrame(() => { chart.resize(); chart.scrollToRealTime(); });
-    await Promise.all([loadIndicators(), loadDrawings(), api('/api/levels?symbol=' + encodeURIComponent(S.symbol)).then(L => (S.levels = L)).catch(() => (S.levels = null))]);
+    const loads = await Promise.allSettled([loadIndicators(), loadDrawings(), loadLevels()]);
+    if (id !== loadId) return;
     renderQuote(); renderTab();
+    const failed = loads.find(x => x.status === 'rejected');
+    if (failed) showErr(failed.reason?.message || String(failed.reason));
   } catch (e) { showErr(e.message); }
 }
 
@@ -839,7 +874,9 @@ if (live) {
   setInterval(async () => {
     if (document.hidden || S.tf === '1d') return;
     const id = loadId;
-    try { const r = await api('/api/bars?symbol=' + encodeURIComponent(S.symbol) + '&tf=' + S.tf); if (id !== loadId) return; const lastT = S.bars.at(-1)?.time; S.bars = r.bars; if (pushBar) for (const b of r.bars.filter(b => b.time >= lastT)) pushBar(toK(b)); renderQuote(); } catch {}
+    try { const r = await api('/api/bars?symbol=' + encodeURIComponent(S.symbol) + '&tf=' + S.tf); if (id !== loadId) return; const lastT = S.bars.at(-1)?.time; S.bars = r.bars; if (pushBar) for (const b of r.bars.filter(b => b.time >= lastT)) pushBar(toK(b)); renderQuote();
+      // Indicator lines and levels follow the new candles too.
+      await Promise.allSettled([loadIndicators(), loadLevels()]); if (id === loadId) renderQuote(); } catch {}
   }, 30000);
 }
 
