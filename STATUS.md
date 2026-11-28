@@ -55,6 +55,6 @@ Current as of: 2026-11-28, on branch `fix/review-2026-11-28-rest` (the 17 remain
 - The unattended morning run (Claude) gets read and draw tools only.
 
 ## How to verify
-- `npm run test:unit`: calculation checks, no network needed. Passed on `fix/review-2026-11-28-rest` (2026-11-28).
+- `npm run test:unit`: calculation checks, no network needed. Also checks the save lock (4 processes x 100 locked saves all land; stale and failed locks are cleared) and the morning run (the Claude lists in `morning.sh` / `morning.ps1` match `mcp.js --morning`, no write tool is in it, both Codex branches pass `--morning`, and any new tool must be put in or left out on purpose). Passed on `fix/review-2026-11-28-rest` (2026-11-28).
 - `npm test`: starts the MCP server and calls every tool once; needs `npm install` first and live data. Passed on UAT's machine for PR #3 and for `fix/review-2026-11-28-rest` (2026-11-28, Schwab data).
 - Market data checks need the app running with a real source (`npm start`, then http://localhost:4321).

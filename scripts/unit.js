@@ -12,7 +12,10 @@ import { fairValueGaps, atr } from '../lib/levels.js';
 import rsi from '../indicators/rsi.js';
 import { vwap } from '../lib/indicators.js';
 import { getBars as csvBars } from '../lib/providers/csv.js';
-import { ROOT } from '../lib/config.js';
+import { ROOT, withLock } from '../lib/config.js';
+import os from 'node:os';
+import { spawn } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 const et = s => parseTime(s); // "YYYY-MM-DD HH:MM" in New York time -> unix seconds
 const bar = (t, o, h, l, c, v = 100) => ({ time: et(t), open: o, high: h, low: l, close: c, volume: v });
@@ -113,5 +116,57 @@ const sameDay = [bar('2026-11-25 10:00', 100, 100.2, 99.8, 100), bar('2026-11-25
 assert.equal(fairValueGaps(sameDay).length, 1);
 const tr = Array.from({ length: 40 }, (_, i) => ({ time: i, open: 100, high: 100 + (i < 20 ? 1 : 3), low: 100 - (i < 20 ? 1 : 3), close: 100, volume: 1 }));
 assert.ok(atr(tr) > 5 && atr(tr) < 6, 'Wilder ATR lags a jump in range (plain 14-day mean would read 6)');
+
+// Save lock: the web server and the MCP server are separate processes, so concurrent read-modify-write saves must all land.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'alphaline-lock-'));
+  const counter = path.join(tmp, 'counter.json');
+  const cfgUrl = pathToFileURL(path.join(ROOT, 'lib', 'config.js')).href;
+  const child = `const { withLock } = await import(${JSON.stringify(cfgUrl)}); const fs = await import('node:fs'); const f = process.argv[1];
+    for (let i = 0; i < 100; i++) withLock(f, () => { const n = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')).n : 0; fs.writeFileSync(f, JSON.stringify({ n: n + 1 })); });`;
+  const run = () => new Promise((ok, fail) => {
+    const p = spawn(process.execPath, ['--input-type=module', '-e', child, counter], { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = ''; p.stderr.on('data', d => (err += d));
+    p.on('error', fail); p.on('close', code => (code === 0 ? ok() : fail(new Error('lock child failed: ' + err))));
+  });
+  try {
+    await Promise.all([run(), run(), run(), run()]);
+    assert.equal(JSON.parse(fs.readFileSync(counter, 'utf8')).n, 400, '4 processes x 100 locked saves all land');
+    assert.equal(fs.existsSync(counter + '.lock'), false, 'lock released');
+    // A failed change releases the lock, and a lock left behind by a crash (older than 10 s) is cleared.
+    assert.throws(() => withLock(counter, () => { throw new Error('boom'); }), /boom/);
+    assert.equal(fs.existsSync(counter + '.lock'), false, 'lock released after an error');
+    fs.writeFileSync(counter + '.lock', ''); const old = new Date(Date.now() - 60000); fs.utimesSync(counter + '.lock', old, old);
+    assert.equal(withLock(counter, () => 'ran'), 'ran', 'stale lock cleared');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// Morning run: nobody watches it and it reads news headlines, so every way it starts gets the same read and draw tools.
+{
+  const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
+  const mcp = read('mcp.js'), sh = read('scripts/morning.sh'), ps = read('scripts/morning.ps1');
+  const registered = [...mcp.matchAll(/server\.tool\('([a-z_]+)'/g)].map(m => m[1]);
+  const setSrc = mcp.match(/MORNING_TOOLS = new Set\(\[([^\]]+)\]\)/);
+  assert.ok(setSrc, 'mcp.js defines MORNING_TOOLS');
+  const morning = [...setSrc[1].matchAll(/'([a-z_]+)'/g)].map(m => m[1]).sort();
+  const claudeList = src => [...src.matchAll(/mcp__alphaline__([a-z_]+)/g)].map(m => m[1]).sort();
+  assert.deepEqual(claudeList(sh), morning, 'morning.sh Claude list matches mcp.js --morning');
+  assert.deepEqual(claudeList(ps), morning, 'morning.ps1 Claude list matches mcp.js --morning');
+  for (const t of morning) assert.ok(registered.includes(t), `morning tool ${t} exists in mcp.js`);
+  // Every other tool is left out on purpose. A new tool must be added to one list or the other here.
+  const leftOut = ['chart_remove_drawing', 'chart_clear', 'indicator_set', 'indicator_remove', 'indicator_write', 'journal_get', 'journal_add',
+    'risk_size', 'alert_set', 'alert_list', 'alert_remove', 'rules_save', 'scanlist_set'];
+  assert.deepEqual(registered.filter(t => !morning.includes(t)).sort(), leftOut.sort(), 'every tool is either in the morning set or left out on purpose');
+  for (const t of ['rules_save', 'scanlist_set', 'journal_add', 'alert_set', 'alert_remove', 'indicator_set', 'indicator_remove', 'indicator_write', 'chart_clear', 'chart_remove_drawing'])
+    assert.ok(!morning.includes(t), `${t} is not in the morning set`);
+  // The Codex branch starts mcp.js with --morning in both scripts.
+  for (const [name, src] of [['morning.sh', sh], ['morning.ps1', ps]]) {
+    const codex = src.split('\n').find(l => /^\s*codex exec /.test(l));
+    assert.ok(codex, `${name} has a codex exec line`);
+    assert.match(codex, /mcp_servers\.alphaline\.args=\['[^']*','--morning'\]/, `${name} Codex run uses --morning`);
+    assert.match(codex, /mcp_servers\.alphaline\.command=/, `${name} Codex run sets the server command`);
+  }
+  assert.match(mcp, /process\.argv\.includes\('--morning'\)/, 'mcp.js honours --morning');
+}
 
 console.log('unit checks passed');
