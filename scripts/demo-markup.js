@@ -2,8 +2,9 @@
 // Run: node scripts/demo-markup.js   (with the desk open, the marks appear live)
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { fileURLToPath } from 'node:url';  // decodes spaces and drive letters in the folder path
 const c = new Client({ name: 'demo', version: '1' });
-await c.connect(new StdioClientTransport({ command: process.execPath, args: [new URL('../mcp.js', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')] }));
+await c.connect(new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../mcp.js', import.meta.url))] }));
 const call = async (name, a) => JSON.parse((await c.callTool({ name, arguments: a })).content[0].text);
 await call('chart_clear', { symbol: 'SPY', source: 'all' });
 const L = await call('chart_levels', { symbol: 'SPY' });

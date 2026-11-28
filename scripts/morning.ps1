@@ -8,7 +8,9 @@ $tools = "mcp__alphaline__rules_get,mcp__alphaline__brief_get,mcp__alphaline__ne
 if (Get-Command claude -ErrorAction SilentlyContinue) {
   claude -p "Use the alphaline tools. Read my rules (rules_get), today's facts brief (brief_get) and the news (news_get). For each watchlist symbol, mark the chart using my rules. Then save a short morning brief with brief_save: what matters today, the levels I care about, event times, and what would make me sit out. Education only, no predictions." --allowedTools $tools
 } elseif (Get-Command codex -ErrorAction SilentlyContinue) {
-  codex exec "Use the alphaline MCP tools. Read rules_get, brief_get and news_get, mark each watchlist chart using my rules, then save a short morning brief with brief_save. Education only, no predictions."
+  # Codex has no per-run tool list, so point its alphaline server at the --morning tool set for this run only.
+  $node = (Get-Command node).Source; $mcp = Join-Path (Get-Location) 'mcp.js'
+  codex exec -c "mcp_servers.alphaline.command='$node'" -c "mcp_servers.alphaline.args=['$mcp','--morning']" "Use the alphaline MCP tools. Read rules_get, brief_get and news_get, mark each watchlist chart using my rules, then save a short morning brief with brief_save. Education only, no predictions."
 } else {
   Write-Host "Facts brief written. Install Claude Code or Codex to add the AI brief."
 }
