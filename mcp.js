@@ -32,7 +32,7 @@ server.tool('chart_get_bars', 'Recent candles for a symbol (times in New York ti
     return `${r.symbol} ${timeframe} from ${providerInfo().label}${r.stale ? ' (STALE copy: ' + r.error + ')' : ''}\ntime ET | open high low close | volume\n` + rows.join('\n');
   }));
 
-server.tool('chart_levels', 'Calculated facts: prior day high/low/close, premarket high/low, open, opening gap, VWAP, ATR, unfilled 15m fair value gaps and daily support/resistance zones. Calculated by code, not guessed.',
+server.tool('chart_levels', 'Calculated facts: prior day high/low/close, premarket high/low, open, opening gap, VWAP, ATR, unfilled 15m fair value gaps and daily support/resistance zones. Calculated by code, not guessed. Pass on any "warnings" and "clipped" (prints left out as bad) to the trader.',
   { symbol: Sym }, wrap(({ symbol }) => levelsFor(symbol)));
 
 server.tool('chart_auto_mark', 'Draw the calculated levels, gaps and zones on the chart (replaces earlier auto marks, keeps yours).',
@@ -106,8 +106,8 @@ server.tool('journal_add', 'Add one trade to the journal.',
     result_r: z.number().optional(), setup: z.string().optional(), rule_followed: z.enum(['yes', 'no']).optional(), emotion: z.string().optional(), notes: z.string().optional() },
   wrap(t => 'Added: ' + addTrade(t)));
 
-server.tool('risk_size', 'Position size from the risk rule, calculated by code. Defaults come from config.json (account size, risk %).',
-  { entry: z.number(), stop: z.number(), side: z.enum(['long', 'short']).optional().describe('long needs the stop below entry, short above'), account: z.number().optional(), riskPct: z.number().min(0.05).max(5).optional() },
+server.tool('risk_size', 'Position size from the risk rule, calculated by code. Defaults come from config.json (account size, risk %). Never more shares than the account can buy; the result says which side it assumed.',
+  { entry: z.number().positive(), stop: z.number().positive(), side: z.enum(['long', 'short']).optional().describe('long needs the stop below entry, short above; inferred from the stop when left out'), account: z.number().positive().optional(), riskPct: z.number().min(0.05).max(5).optional() },
   wrap(({ entry, stop, side, account, riskPct }) => { const a = loadConfig().account || {}; return sizePosition({ entry, stop, side, account: account ?? a.size ?? 10000, riskPct: riskPct ?? a.riskPct ?? 1 }); }));
 
 server.tool('alert_set', 'Set a price alert. The chart page plays a sound and shows a notification when price crosses it.',
@@ -122,15 +122,19 @@ server.tool('rules_save', 'Save the trader\'s rules to my-rules.md (replaces the
     fs.writeFileSync(f, markdown); return 'Saved my-rules.md (previous version in my-rules.md.bak).';
   }));
 
-server.tool('indicator_write', 'Save a custom indicator file (indicators/<name>.js) and turn it on. Code must follow indicators/rsi.js: export default { label, pane, compute(bars) } returning [{ time, value }]. Plain arithmetic on candles only: no imports, network or file access.',
+server.tool('indicator_write', 'Save a custom indicator file (indicators/<name>.js). It is saved OFF: the code runs on the trader\'s computer with no sandbox, so the trader reads it and turns it on in the Indicators sheet. Code must follow indicators/rsi.js: export default { label, pane, compute(bars) } returning [{ time, value }]. Plain arithmetic on candles only: no imports, network or file access.',
   { name: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/), code: z.string().min(20).max(20000), pane: z.enum(['price', 'lower']).default('lower'), color: z.string().optional() },
   wrap(async ({ name, code, pane, color }) => {
-    if (/\b(import|require|process|fetch|child_process|fs)\b/.test(code.replace(/export default/g, ''))) throw new Error('Indicators may only do arithmetic on the candles: no import, require, process, fetch or file access.');
+    // A basic check only, not a sandbox: the trader reading the file before turning it on is the real protection.
+    if (/\b(import|require|process|fetch|child_process|fs|eval|Function|globalThis|constructor)\b/.test(code.replace(/export default/g, ''))) throw new Error('Indicators may only do arithmetic on the candles: no import, require, process, fetch, eval, Function, globalThis, constructor or file access.');
     const fs = await import('node:fs'); const path = await import('node:path');
-    fs.mkdirSync(CUSTOM_DIR, { recursive: true }); fs.writeFileSync(path.join(CUSTOM_DIR, name + '.js'), code);
+    // Switch the entry off before the new code lands, so an indicator that was already on never runs unread code.
     const list = loadIndicators(); const item = { id: name, type: 'custom', file: name, pane, color: color || '#a78bfa', width: 1, enabled: false };
     const i = list.findIndex(x => x.id === name); if (i < 0) list.push(item); else list[i] = { ...list[i], ...item };
-    saveIndicators(list); return 'Saved indicators/' + name + '.js. It is off until the trader reads the file and turns it on in the Indicators sheet (the code runs on their computer).';
+    for (const x of list) if (x.type === 'custom' && x.file === name) x.enabled = false;
+    saveIndicators(list);
+    fs.mkdirSync(CUSTOM_DIR, { recursive: true }); fs.writeFileSync(path.join(CUSTOM_DIR, name + '.js'), code);
+    return 'Saved indicators/' + name + '.js. It is off until the trader reads the file and turns it on in the Indicators sheet (the code runs on their computer).';
   }));
 
 server.tool('scanlist_set', 'Replace the scanner\'s symbol list (config.json scanList).', { symbols: z.array(z.string()).min(1).max(60) },

@@ -6,6 +6,7 @@ import { session, parseTime } from '../lib/time.js';
 import { aggregate } from '../lib/aggregate.js';
 import { clipBadPrints, computeLevels } from '../lib/levels.js';
 import { sizePosition, splitCsvLine } from '../lib/journal.js';
+import { vwap } from '../lib/indicators.js';
 import { getBars as csvBars } from '../lib/providers/csv.js';
 import { ROOT } from '../lib/config.js';
 
@@ -54,6 +55,27 @@ assert.equal(L2.premarket.high, 252.75); assert.equal(L2.premarket.from, '04:01'
 assert.throws(() => sizePosition({ account: 10000, riskPct: 1, entry: 100, stop: 110, side: 'long' }), /below/);
 assert.equal(sizePosition({ account: 10000, riskPct: 1, entry: 100, stop: 98, side: 'long' }).shares, 50);
 
+// Position size never exceeds what the account can buy, refuses nonsense, and says which side it assumed.
+const capped = sizePosition({ account: 10000, riskPct: 1, entry: 100, stop: 99.9 });
+assert.equal(capped.shares, 100); assert.equal(capped.positionValue, 10000); assert.match(capped.note, /Capped/);
+assert.throws(() => sizePosition({ account: -10000, riskPct: 1, entry: 100, stop: 99 }), /account/);
+assert.throws(() => sizePosition({ account: 10000, riskPct: 1, entry: 0, stop: 1 }), /entry/);
+const inferred = sizePosition({ account: 10000, riskPct: 1, entry: 100, stop: 105 });
+assert.equal(inferred.side, 'short'); assert.equal(inferred.sideInferred, true);
+
+// A trimmed print is reported, not hidden.
+const L3 = computeLevels('TEST', [...intra.slice(0, 4), bar('2026-11-27 12:50', 103.1, 103.2, 103, 103.1), bar('2026-11-27 12:55', 103.1, 120, 103, 103.1), bar('2026-11-27 13:00', 103.1, 103.2, 103, 103.1)], daily, []);
+assert.equal(L3.today.high, 103.5); assert.equal(L3.clipped.items[0].field, 'high'); assert.equal(L3.clipped.items[0].from, 120);
+
+// Prior close comes from the daily bar (the official close) when it is close to the last regular-session bar.
+const daily2 = [...daily.slice(0, -1), { time: et('2026-11-25'), open: 100, high: 101, low: 99, close: 100.4, volume: 1 }, daily.at(-1)];
+const L4 = computeLevels('TEST', intra, daily2, []);
+assert.equal(L4.prior.close, 100.4); assert.match(L4.prior.closeFrom, /daily/);
+
+// Chart VWAP is regular-session only, like chart_levels.
+const vw = vwap([bar('2026-11-25 08:00', 50, 50, 50, 50, 1000), bar('2026-11-25 09:30', 100, 100, 100, 100, 10), bar('2026-11-25 09:35', 102, 102, 102, 102, 10), bar('2026-11-25 16:05', 1, 1, 1, 1, 1000)]);
+assert.deepEqual(vw.map(p => p.value), [100, 101]);
+
 // Journal keeps quotes in notes.
 assert.deepEqual(splitCsvLine('a,"he said ""hi""",b'), ['a', 'he said "hi"', 'b']);
 
@@ -64,6 +86,13 @@ fs.writeFileSync(f, 'date,open,high,low,change,close,volume\n2026-01-15 09:30:00
 try {
   const b = await csvBars('ZZUNIT', '5m');
   assert.equal(b[0].close, 10.5); assert.equal(b[0].time, et('2026-01-15 09:30'));
+  // A coarser file is not passed off as finer candles, and daily candles leave out pre-market and after-hours.
+  fs.writeFileSync(f, 'date,open,high,low,close,volume\n2026-01-15 08:00:00,10,30,9,10,100\n2026-01-15 09:30:00,10,11,9,10.5,100\n2026-01-15 09:35:00,10.5,12,10,10.6,100\n2026-01-15 17:00:00,10.6,10.6,1,10.6,100\n');
+  const d1 = await csvBars('ZZUNIT', '1d');
+  assert.equal(d1.length, 1); assert.equal(d1[0].high, 12); assert.equal(d1[0].low, 9); assert.equal(d1[0].close, 10.6);
 } finally { fs.unlinkSync(f); }
+const g = path.join(dir, 'ZZUNIT_1h.csv');
+fs.writeFileSync(g, 'date,open,high,low,close,volume\n2026-01-15 09:30:00,10,11,9,10.5,100\n2026-01-15 10:30:00,10.5,11,10,10.6,100\n');
+try { await assert.rejects(() => csvBars('ZZUNIT', '5m'), /cannot show 5m/); } finally { fs.unlinkSync(g); }
 
 console.log('unit checks passed');
