@@ -601,7 +601,7 @@ async function renderSignals() {
 
 async function loadAlerts() { S.alerts = await api('/api/alerts').catch(() => []); }
 function chime() {
-  try { const a = new (window.AudioContext || window.webkitAudioContext)(); [880, 1320].forEach((f, i) => { const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; o.connect(g); g.connect(a.destination); const t = a.currentTime + i * 0.18; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35); o.start(t); o.stop(t + 0.4); }); } catch {}
+  try { const a = (chime.ctx ||= new (window.AudioContext || window.webkitAudioContext)()); if (a.state === 'suspended') a.resume(); [880, 1320].forEach((f, i) => { const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; o.connect(g); g.connect(a.destination); const t = a.currentTime + i * 0.18; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35); o.start(t); o.stop(t + 0.4); }); } catch {}
 }
 let checking = false;
 async function checkAlerts() {
@@ -614,7 +614,8 @@ async function checkAlertsOnce() {
   for (const a of live) {
     const last = q.find(x => x.symbol === a.symbol)?.last; if (last == null) continue;
     if (a.direction === 'above' ? last >= a.price : last <= a.price) {
-      await api('/api/alerts/triggered?id=' + a.id + '&price=' + last, { method: 'POST' });
+      const r = await api('/api/alerts/triggered?id=' + a.id + '&price=' + last, { method: 'POST' });
+      if (!r?.first) continue;  // another open tab already rang for it
       chime();
       const msg = a.symbol + ' is ' + (a.direction === 'above' ? 'at or above ' : 'at or below ') + fmt(a.price) + (a.note ? ' · ' + a.note : '');
       try { if (Notification.permission === 'granted') new Notification('Alphaline alert', { body: msg }); } catch {}
@@ -637,7 +638,7 @@ async function renderAlerts() {
     + '<p class="muted" style="margin-top:8px">Or pick the bell in the drawing tools and click the chart. Alerts ring with a sound and a desktop notification while Alphaline is open in a tab.</p>'
     + '<h3>Waiting</h3><div class="rowset">' + (waiting.map(a => '<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(a.symbol) + ' ' + (a.direction === 'above' ? '≥ ' : '≤ ') + fmt(a.price) + '</b><small>' + esc(a.note || 'Set ' + a.created.slice(0, 10)) + '</small></span><button class="x" data-unalert="' + a.id + '" aria-label="Remove">✕</button></div>').join('') || '<p class="muted" style="padding:12px">No alerts yet.</p>') + '</div>'
     + (rang.length ? '<h3>Rang</h3><div class="rowset">' + rang.map(a => '<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><span class="name"><b>' + esc(a.symbol) + ' ' + fmt(a.price) + '</b><small>' + esc(new Date(a.triggered).toLocaleString()) + ' at ' + fmt(a.triggeredAt) + '</small></span><button class="x" data-unalert="' + a.id + '" aria-label="Remove">✕</button></div>').join('') + '</div>' : ''));
-  $('aAdd').onsubmit = async e => { e.preventDefault(); try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch {} await api('/api/alerts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: $('aSym').value, price: +$('aPrice').value, direction: $('aDir').value, note: $('aNote').value }) }); renderAlerts(); };
+  $('aAdd').onsubmit = async e => { e.preventDefault(); try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch {} try { await api('/api/alerts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: $('aSym').value, price: $('aPrice').value.trim(), direction: $('aDir').value, note: $('aNote').value }) }); renderAlerts(); } catch (err) { showErr(err.message); } };
 }
 
 async function renderJournal() {
@@ -647,7 +648,7 @@ async function renderJournal() {
     + (which === 'sample' ? '<p class="muted">Fictional trades with mistakes planted in them. Ask your AI to find them.</p>' : '')
     + '<div class="stats"><div class="stat"><b class="num">' + s.trades + '</b><span>Trades</span></div><div class="stat"><b class="num">' + (s.totalR >= 0 ? '+' : '') + s.totalR + 'R</b><span>Total result</span></div><div class="stat"><b class="num">' + (s.winRate == null ? '–' : s.winRate + '%') + '</b><span>Winners</span></div><div class="stat"><b class="num">' + s.ruleBreaks + '</b><span>Rule breaks (' + s.rLostOnBreaks + 'R)</span></div></div>'
     + (r.rows.length ? '<div class="scroll"><table class="tbl num"><tr><th>Date</th><th>Trade</th><th>R</th><th>Rules</th><th>Felt</th></tr>' + r.rows.slice().reverse().map(x => '<tr><td>' + esc(x.date.slice(5)) + '</td><td><b>' + esc(x.symbol) + '</b> ' + esc(x.side) + '</td><td class="' + (parseFloat(x.result_r) >= 0 ? 'up' : 'down') + '">' + esc(x.result_r) + '</td><td>' + (x.rule_followed === 'no' ? '<span class="down">broke</span>' : esc(x.rule_followed)) + '</td><td>' + esc(x.emotion) + '</td></tr>').join('') + '</table></div>' : '')
-    + (which === 'mine' ? '<h3>Log a trade</h3><form class="form" id="jAdd"><div class="two"><label>Date<input name="date" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></label><label>Symbol<input name="symbol" value="' + esc(S.symbol) + '"></label></div><div class="two"><label>Side<select name="side"><option>long</option><option>short</option></select></label><label>Result (R)<input name="result_r" inputmode="decimal" placeholder="e.g. 1.5 or -1"></label></div><div class="two"><label>Entry<input name="entry" inputmode="decimal"></label><label>Exit<input name="exit" inputmode="decimal"></label></div><div class="two"><label>Followed my rules?<select name="rule_followed"><option>yes</option><option>no</option></select></label><label>How I felt<input name="emotion" placeholder="calm, rushed…"></label></div><label>Setup and notes<input name="notes"></label><button class="primary">Add to journal</button></form>' : '')
+    + (which === 'mine' ? '<h3>Log a trade</h3><form class="form" id="jAdd"><div class="two"><label>Date<input name="date" type="date" value="' + new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date()) + '"></label><label>Symbol<input name="symbol" value="' + esc(S.symbol) + '"></label></div><div class="two"><label>Side<select name="side"><option>long</option><option>short</option></select></label><label>Result (R)<input name="result_r" inputmode="decimal" placeholder="e.g. 1.5 or -1"></label></div><div class="two"><label>Entry<input name="entry" inputmode="decimal"></label><label>Exit<input name="exit" inputmode="decimal"></label></div><div class="two"><label>Followed my rules?<select name="rule_followed"><option>yes</option><option>no</option></select></label><label>How I felt<input name="emotion" placeholder="calm, rushed…"></label></div><label>Setup and notes<input name="notes"></label><button class="primary">Add to journal</button></form>' : '')
     + '<div class="rowset" style="margin-top:12px"><div class="prompt"><span><q>Review my week</q><small>Top three leaks, with the trades that prove them</small></span>' + copyBtn('Read my journal with journal_get' + (which === 'sample' ? ' (which: sample)' : '') + '. Using only that data: 1) name my top three leaks (overtrading, revenge trades, early exits, rule breaks), each with the rows that prove it; 2) total R, win rate, number of rule breaks, R lost on rule-break trades; 3) one specific rule or habit change for next week. Do not guess at anything not in the data.') + '</div></div>'
     + '<p class="muted" style="margin-top:10px">Your journal is data/journal.csv. It opens in Excel or Google Sheets too.</p>');
   const f = $('jAdd'); if (f) f.onsubmit = async e => { e.preventDefault(); const d = Object.fromEntries(new FormData(f)); for (const k of ['entry', 'exit', 'result_r']) d[k] = d[k] === '' ? undefined : +d[k]; await api('/api/journal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }); renderJournal(); };
@@ -727,17 +728,19 @@ $('panel').addEventListener('change', e => {
 const TOOL_HINT = { hline: 'Click the chart to place a level', box: 'Click the top of the zone, then the bottom', alert: 'Click the price to be alerted at', segment: 'Click two points', rayLine: 'Click two points', fibonacciLine: 'Click the low, then the high', simpleAnnotation: 'Click where the note goes', brush: 'Press and drag to draw' };
 function setTool(t) {
   S.tool = t; S.pending = null;
+  chart.removeOverlay({ groupId: 'draft' });  // an unfinished line, ray or note is dropped when the tool changes
   document.querySelectorAll('#tools button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === t));
   $('toolHint').hidden = !TOOL_HINT[t]; $('toolHint').textContent = (TOOL_HINT[t] || '') + ' · Esc to cancel';
   if (['segment', 'rayLine', 'fibonacciLine', 'simpleAnnotation', 'brush'].includes(t)) {
     const extra = t === 'simpleAnnotation' ? { extendData: (prompt('Note text') || '').slice(0, 60) || 'Note' } : {};
-    chart.createOverlay({ name: t, groupId: 'you', ...extra, styles: { line: { color: css('--you') }, text: { color: css('--fg') } },
-      onDrawEnd: ({ overlay }) => { saveOverlay(overlay); setTool('cursor'); return false; } });
+    const sym = S.symbol;
+    chart.createOverlay({ name: t, groupId: 'draft', ...extra, styles: { line: { color: css('--you') }, text: { color: css('--fg') } },
+      onDrawEnd: ({ overlay }) => { saveOverlay(overlay, sym).then(loadDrawings).catch(e => showErr(e.message)); setTool('cursor'); return false; } });
   }
 }
-async function saveOverlay(o) {
+async function saveOverlay(o, sym = S.symbol) {
   const points = (o.points || []).map(p => ({ timestamp: p.timestamp, value: p.value }));
-  await api('/api/drawings?symbol=' + encodeURIComponent(S.symbol), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'overlay', name: o.name, points, label: o.name === 'simpleAnnotation' ? o.extendData : ({ segment: 'Trend line', rayLine: 'Ray', fibonacciLine: 'Fibonacci', brush: 'Brush' }[o.name] || o.name), text: o.extendData }) });
+  await api('/api/drawings?symbol=' + encodeURIComponent(sym), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'overlay', name: o.name, points, label: o.name === 'simpleAnnotation' ? o.extendData : ({ segment: 'Trend line', rayLine: 'Ray', fibonacciLine: 'Fibonacci', brush: 'Brush' }[o.name] || o.name), text: o.extendData }) });
 }
 function drawUserOverlays() {
   chart.removeOverlay({ groupId: 'you' });
@@ -834,7 +837,7 @@ async function open(symbol, tf) {
   try {
     const r = await api('/api/bars?symbol=' + encodeURIComponent(want) + '&tf=' + tf2);
     if (id !== loadId) return;  // the trader already asked for something else
-    if (want !== S.symbol) { S.drawings = []; S.levels = null; }  // nothing from the old symbol is drawn on the new one
+    if (want !== S.symbol) { S.drawings = []; S.levels = null; if (S.tool && S.tool !== 'cursor') setTool('cursor'); }  // nothing from the old symbol is drawn on the new one, and a half-made mark is dropped
     S.symbol = want; S.tf = tf2; S.bars = r.bars;
     document.querySelectorAll('#tfs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tf === S.tf));
     document.querySelectorAll('#watch button').forEach(b => b.setAttribute('aria-pressed', b.textContent === S.symbol));

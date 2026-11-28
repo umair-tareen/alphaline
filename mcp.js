@@ -9,13 +9,17 @@ import { addDrawing, listDrawings, removeDrawing, clearDrawings } from './lib/st
 import { autoMark, levelsFor, setFocus, readBrief, saveBrief, readRules } from './lib/desk.js';
 import { getNews } from './lib/news.js';
 import { fmtET, parseTime } from './lib/time.js';
-import { loadIndicators, saveIndicators, CUSTOM_DIR } from './lib/indicators.js';
+import { loadIndicators, updateIndicators, CUSTOM_DIR } from './lib/indicators.js';
 import { scanList } from './lib/scan.js';
 import { listAlerts, addAlert, removeAlert } from './lib/alerts.js';
 import { readJournal, addTrade, sizePosition } from './lib/journal.js';
 
 ensureDirs();
 const server = new McpServer({ name: 'alphaline', version: '0.1.0' });
+// --morning: the unattended morning run reads news headlines, so it only gets the read and draw tools, whatever AI runs it.
+const MORNING_TOOLS = new Set(['rules_get', 'brief_get', 'news_get', 'chart_get_bars', 'chart_levels', 'chart_list_drawings', 'chart_auto_mark',
+  'chart_draw_level', 'chart_draw_zone', 'chart_add_note', 'chart_focus', 'scan_watchlist', 'indicator_list', 'data_sources', 'brief_save']);
+if (process.argv.includes('--morning')) { const add = server.tool.bind(server); server.tool = (name, ...rest) => (MORNING_TOOLS.has(name) ? add(name, ...rest) : undefined); }
 const text = v => ({ content: [{ type: 'text', text: typeof v === 'string' ? v : JSON.stringify(v, null, 2) }] });
 const wrap = fn => async args => { try { return text(await fn(args)); } catch (e) { return { ...text('Error: ' + e.message), isError: true }; } };
 const Sym = z.string().describe('Ticker, e.g. SPY');
@@ -75,8 +79,7 @@ server.tool('indicator_set', 'Add or change an indicator (the chart updates live
     length: z.number().int().min(1).max(500).optional(), mult: z.number().optional(), color: z.string().optional(), width: z.number().int().min(1).max(4).optional(),
     enabled: z.boolean().optional(), pane: z.enum(['price', 'lower']).optional(), label: z.string().optional(), file: z.string().optional(), params: z.record(z.any()).optional(),
     avgLength: z.number().int().optional(), highlightAbove: z.boolean().optional(), highlightColor: z.string().optional() },
-  wrap(({ id, ...patch }) => {
-    const list = loadIndicators();
+  wrap(({ id, ...patch }) => updateIndicators(list => {
     const i = list.findIndex(x => x.id === id);
     if (i < 0 && !patch.type) throw new Error('New indicator needs a type');
     const next = i < 0 ? { id, enabled: true, ...patch } : { ...list[i], ...patch };
@@ -85,12 +88,11 @@ server.tool('indicator_set', 'Add or change an indicator (the chart updates live
     if (next.type === 'custom' && next.enabled !== false && !(prev?.type === 'custom' && prev.enabled !== false && file(prev) === file(next)))
       throw new Error(`Custom indicator code runs on this computer, so the trader turns it on in the Indicators sheet after reading indicators/${file(next)}.js.`);
     if (i < 0) list.push(next); else list[i] = next;
-    saveIndicators(list);
     return next;
-  }));
+  })));
 
 server.tool('indicator_remove', 'Remove an indicator from the chart (use indicator_set enabled:false to just hide it).', { id: z.string() },
-  wrap(({ id }) => { const list = loadIndicators(); const left = list.filter(x => x.id !== id); saveIndicators(left); return { removed: list.length - left.length }; }));
+  wrap(({ id }) => updateIndicators(list => { const n = list.length; list.splice(0, n, ...list.filter(x => x.id !== id)); return { removed: n - list.length }; })));
 
 server.tool('data_sources', 'Data sources available (built-in, CSV imports and plug-ins in providers/), which one is active, and which need setup.', {},
   wrap(async () => ({ active: providerInfo(), sources: await listProviders() })));
@@ -129,18 +131,19 @@ server.tool('indicator_write', 'Save a custom indicator file (indicators/<name>.
     if (/\b(import|require|process|fetch|child_process|fs|eval|Function|globalThis|constructor)\b/.test(code.replace(/export default/g, ''))) throw new Error('Indicators may only do arithmetic on the candles: no import, require, process, fetch, eval, Function, globalThis, constructor or file access.');
     const fs = await import('node:fs'); const path = await import('node:path');
     // Switch the entry off before the new code lands, so an indicator that was already on never runs unread code.
-    const list = loadIndicators(); const item = { id: name, type: 'custom', file: name, pane, color: color || '#a78bfa', width: 1, enabled: false };
-    const i = list.findIndex(x => x.id === name); if (i < 0) list.push(item); else list[i] = { ...list[i], ...item };
-    for (const x of list) if (x.type === 'custom' && x.file === name) x.enabled = false;
-    saveIndicators(list);
+    updateIndicators(list => {
+      const item = { id: name, type: 'custom', file: name, pane, color: color || '#a78bfa', width: 1, enabled: false };
+      const i = list.findIndex(x => x.id === name); if (i < 0) list.push(item); else list[i] = { ...list[i], ...item };
+      for (const x of list) if (x.type === 'custom' && x.file === name) x.enabled = false;
+    });
     fs.mkdirSync(CUSTOM_DIR, { recursive: true }); fs.writeFileSync(path.join(CUSTOM_DIR, name + '.js'), code);
     return 'Saved indicators/' + name + '.js. It is off until the trader reads the file and turns it on in the Indicators sheet (the code runs on their computer).';
   }));
 
 server.tool('scanlist_set', 'Replace the scanner\'s symbol list (config.json scanList).', { symbols: z.array(z.string()).min(1).max(60) },
   wrap(async ({ symbols }) => {
-    const path = await import('node:path'); const { ROOT, writeJsonFile } = await import('./lib/config.js');
-    const cfg = loadConfig(); cfg.scanList = symbols.map(s => s.toUpperCase()); writeJsonFile(path.join(ROOT, 'config.json'), cfg);
+    const { updateConfig } = await import('./lib/config.js');
+    const cfg = updateConfig(c => { c.scanList = symbols.map(s => s.toUpperCase()); });
     return 'Scan list is now: ' + cfg.scanList.join(', ');
   }));
 

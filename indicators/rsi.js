@@ -17,7 +17,8 @@ export default {
       const g = Math.max(ch, 0), l = Math.max(-ch, 0);
       if (i <= length) { gain += g / length; loss += l / length; }
       else { gain = (gain * (length - 1) + g) / length; loss = (loss * (length - 1) + l) / length; }
-      if (i >= length) out.push({ time: bars[i].time, value: loss === 0 ? 100 : 100 - 100 / (1 + gain / loss) });
+      // no gains and no losses (a flat series) is 50, not 100
+      if (i >= length) out.push({ time: bars[i].time, value: loss === 0 ? (gain === 0 ? 50 : 100) : 100 - 100 / (1 + gain / loss) });
     }
     return out;
   },

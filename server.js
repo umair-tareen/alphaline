@@ -3,12 +3,11 @@ import http from 'node:http';
 import { exec } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, DATA, ensureDirs, loadConfig } from './lib/config.js';
+import { ROOT, DATA, ensureDirs, loadConfig, updateConfig } from './lib/config.js';
 import { getBars, providerInfo, listProviders, loadPlugins } from './lib/bars.js';
-import { writeJsonFile } from './lib/config.js';
 import { listDrawings, removeDrawing } from './lib/store.js';
 import { autoMark, levelsFor, getState, readBrief, readRules } from './lib/desk.js';
-import { computeIndicators, loadIndicators, saveIndicators, CONFIG_FILE, CUSTOM_DIR } from './lib/indicators.js';
+import { computeIndicators, loadIndicators, updateIndicators, CONFIG_FILE, CUSTOM_DIR } from './lib/indicators.js';
 import { acceptDrawing, addDrawing, clearDrawings } from './lib/store.js';
 import { listAlerts, addAlert, removeAlert, markTriggered } from './lib/alerts.js';
 import { scanList } from './lib/scan.js';
@@ -30,14 +29,19 @@ const send = (res, code, body, type = 'application/json') => {
 
 const clients = new Set();
 let timer = null;
-fs.watch(DATA, { recursive: true }, (_e, name) => {
-  if (!name || name.startsWith('bars') || name.endsWith('.tmp')) return;
+const onData = name => {
+  if (!name || name.startsWith('bars') || name.endsWith('.tmp') || name.endsWith('.lock')) return;
   clearTimeout(timer);
   timer = setTimeout(() => {
     const what = name.startsWith('drawings') ? 'drawings' : name.startsWith('briefs') ? 'brief' : name.startsWith('state') ? 'state' : 'other';
     for (const c of clients) c.write(`data: ${JSON.stringify({ what, name })}\n\n`);
   }, 120);
-});
+};
+try { fs.watch(DATA, { recursive: true }, (_e, name) => onData(name)); }
+catch {  // Linux before Node 20 has no recursive watch
+  fs.watch(DATA, (_e, name) => onData(name));
+  for (const d of ['drawings', 'briefs']) fs.watch(path.join(DATA, d), (_e, name) => name && onData(d + '/' + name));
+}
 
 const shout = what => { for (const c of clients) c.write(`data: ${JSON.stringify({ what })}\n\n`); };
 let indTimer = null;
@@ -45,7 +49,13 @@ const onIndicators = () => { clearTimeout(indTimer); indTimer = setTimeout(() =>
 fs.watch(path.dirname(CONFIG_FILE), (_e, name) => { if (name === 'indicators.json') onIndicators(); });
 if (fs.existsSync(CUSTOM_DIR)) fs.watch(CUSTOM_DIR, onIndicators);
 
-const body = req => new Promise((ok, no) => { let s = ''; req.on('data', c => { s += c; if (s.length > 2e5) no(new Error('Too large')); }); req.on('end', () => { try { ok(s ? JSON.parse(s) : {}); } catch (e) { no(e); } }); });
+const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
+const body = req => new Promise((ok, no) => {
+  let s = '';
+  const onData = c => { s += c; if (s.length > 2e5) { req.off('data', onData); req.resume(); no(bad('Request too large', 413)); } };  // stop keeping it; the rest is read and dropped
+  req.on('data', onData);
+  req.on('end', () => { try { ok(s ? JSON.parse(s) : {}); } catch { no(bad('Request body is not valid JSON')); } });
+});
 const SAFE_NAME = /^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/;
 
 const routes = {
@@ -67,17 +77,15 @@ const routes = {
   'GET /api/journal': (q, res) => { const rows = journalRows(q.get('which') || 'mine'); send(res, 200, { rows, stats: journalStats(rows) }); },
   'POST /api/journal': async (_q, res, req) => send(res, 200, { row: addTrade(await body(req)) }),
   'DELETE /api/drawings/mine': (q, res) => send(res, 200, { removed: clearDrawings(q.get('symbol'), 'you') }),
-  'POST /api/drawings': async (q, res, req) => send(res, 200, addDrawing(q.get('symbol'), { ...(await body(req)), source: 'you' })),
+  'POST /api/drawings': async (q, res, req) => { const { id, created, status, source, ...d } = await body(req); send(res, 200, addDrawing(q.get('symbol'), { ...d, source: 'you' })); },
   'GET /api/indicator-code': (q, res) => { const n = q.get('name'); if (!SAFE_NAME.test(n || '')) return send(res, 400, { error: 'Bad name' }); const f = path.join(CUSTOM_DIR, n + '.js'); send(res, 200, { name: n, code: fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : null }); },
   'POST /api/indicator-code': async (_q, res, req) => {
     const { name, code, label, pane, color } = await body(req);
     if (!SAFE_NAME.test(name || '')) return send(res, 400, { error: 'Name: letters, numbers, - and _ only, starting with a letter' });
     fs.mkdirSync(CUSTOM_DIR, { recursive: true });
     fs.writeFileSync(path.join(CUSTOM_DIR, name + '.js'), code);
-    const list = loadIndicators(); const i = list.findIndex(x => x.id === name);
     const item = { id: name, type: 'custom', file: name, label: label || name, pane: pane || 'price', color: color || '#a78bfa', width: 1, enabled: true };
-    if (i < 0) list.push(item); else list[i] = { ...list[i], ...item };
-    saveIndicators(list);
+    updateIndicators(list => { const i = list.findIndex(x => x.id === name); if (i < 0) list.push(item); else list[i] = { ...list[i], ...item }; });
     send(res, 200, item);
   },
   'POST /api/run': (q, res) => {
@@ -86,7 +94,8 @@ const routes = {
     if (!file) return send(res, 400, { error: 'Unknown job' });
     const p = spawn(process.execPath, [file], { cwd: ROOT });
     let out = ''; p.stdout.on('data', d => (out += d)); p.stderr.on('data', d => (out += d));
-    p.on('close', code => send(res, code === 0 ? 200 : 500, { code, out: out.slice(-2000) }));
+    p.on('error', e => { if (!res.headersSent) send(res, 500, { error: 'Could not start ' + file + ': ' + e.message }); });
+    p.on('close', code => { if (!res.headersSent) send(res, code === 0 ? 200 : 500, { code, out: out.slice(-2000) }); });
   },
   'GET /api/depth': async (q, res) => {
     const p = PROVIDERS[loadConfig().provider];
@@ -109,16 +118,13 @@ const routes = {
   'POST /api/provider': async (q, res) => {
     const id = q.get('id');
     if (!(await loadPlugins())[id]) return send(res, 404, { error: 'No data source called ' + id });
-    writeJsonFile(path.join(ROOT, 'config.json'), { ...loadConfig(), provider: id });
+    updateConfig(c => { c.provider = id; });
     send(res, 200, { provider: providerInfo() });
   },
   'GET /api/indicators/config': (_q, res) => send(res, 200, loadIndicators()),
   'POST /api/indicators/toggle': (q, res) => {
-    const list = loadIndicators();
-    const item = list.find(x => x.id === q.get('id'));
+    const item = updateIndicators(list => { const x = list.find(x => x.id === q.get('id')); if (x) x.enabled = q.get('enabled') === 'true'; return x; });
     if (!item) return send(res, 404, { error: 'No indicator ' + q.get('id') });
-    item.enabled = q.get('enabled') === 'true';
-    saveIndicators(list);
     send(res, 200, item);
   },
   'POST /api/drawings/accept': (q, res) => send(res, 200, { accepted: acceptDrawing(q.get('symbol'), q.get('id')) }),
@@ -148,7 +154,7 @@ http.createServer(async (req, res) => {
   const handler = routes[`${req.method} ${url.pathname}`];
   if (!handler) return send(res, 404, { error: 'Not found' });
   try { await handler(url.searchParams, res, req); }
-  catch (e) { send(res, 500, { error: e.message }); }
+  catch (e) { if (!res.headersSent) send(res, e.status || 500, { error: e.message }); }
 }).on('error', e => {
   if (e.code === 'EADDRINUSE') { console.log(`Alphaline is already running at http://localhost:${PORT}`); if (process.argv.includes('--open')) exec(process.platform === 'win32' ? `start "" "http://localhost:${PORT}"` : `open "http://localhost:${PORT}"`); }
   else throw e;

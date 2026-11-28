@@ -10,5 +10,7 @@ PROMPT="Use the alphaline tools. Read my rules (rules_get), today's facts brief 
 # scanlist_set, journal_add, alert or indicator changes, and no clearing or removing drawings.
 TOOLS="mcp__alphaline__rules_get,mcp__alphaline__brief_get,mcp__alphaline__news_get,mcp__alphaline__chart_get_bars,mcp__alphaline__chart_levels,mcp__alphaline__chart_list_drawings,mcp__alphaline__chart_auto_mark,mcp__alphaline__chart_draw_level,mcp__alphaline__chart_draw_zone,mcp__alphaline__chart_add_note,mcp__alphaline__chart_focus,mcp__alphaline__scan_watchlist,mcp__alphaline__indicator_list,mcp__alphaline__data_sources,mcp__alphaline__brief_save"
 if command -v claude >/dev/null; then claude -p "$PROMPT" --allowedTools "$TOOLS"
-elif command -v codex >/dev/null; then codex exec "$PROMPT"
+elif command -v codex >/dev/null; then
+  # Codex has no per-run tool list, so point its alphaline server at the --morning tool set for this run only.
+  codex exec -c "mcp_servers.alphaline.command='$(command -v node)'" -c "mcp_servers.alphaline.args=['$PWD/mcp.js','--morning']" "$PROMPT"
 else echo "AI brief SKIPPED: neither claude nor codex was found on PATH ($PATH). Facts brief written."; fi

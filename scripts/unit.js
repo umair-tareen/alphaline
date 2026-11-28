@@ -5,7 +5,11 @@ import path from 'node:path';
 import { session, parseTime } from '../lib/time.js';
 import { aggregate } from '../lib/aggregate.js';
 import { clipBadPrints, computeLevels } from '../lib/levels.js';
-import { sizePosition, splitCsvLine } from '../lib/journal.js';
+import { sizePosition, splitCsvLine, cell } from '../lib/journal.js';
+import { fileSafe } from '../lib/config.js';
+import { addAlert } from '../lib/alerts.js';
+import { fairValueGaps, atr } from '../lib/levels.js';
+import rsi from '../indicators/rsi.js';
 import { vwap } from '../lib/indicators.js';
 import { getBars as csvBars } from '../lib/providers/csv.js';
 import { ROOT } from '../lib/config.js';
@@ -94,5 +98,20 @@ try {
 const g = path.join(dir, 'ZZUNIT_1h.csv');
 fs.writeFileSync(g, 'date,open,high,low,close,volume\n2026-01-15 09:30:00,10,11,9,10.5,100\n2026-01-15 10:30:00,10.5,11,10,10.6,100\n');
 try { await assert.rejects(() => csvBars('ZZUNIT', '5m'), /cannot show 5m/); } finally { fs.unlinkSync(g); }
+
+// 2026-11-28 review fixes.
+assert.notEqual(fileSafe('BRK.B'), fileSafe('BRK-B')); assert.notEqual(fileSafe('BRK.B'), fileSafe('BRK_B')); assert.equal(fileSafe('spy'), 'SPY');
+assert.equal(et('2026-11-27 10:30:15') - et('2026-11-27 10:30'), 15, 'seconds are New York time too');
+assert.throws(() => addAlert({ symbol: 'SPY', price: '', direction: 'above' }), /above 0/);
+assert.throws(() => addAlert({ symbol: 'SPY', price: 0, direction: 'above' }), /above 0/);
+assert.equal(cell('=HYPERLINK("x")'), `"'=HYPERLINK(""x"")"`); assert.equal(cell('-1.5'), '-1.5'); assert.equal(cell('+1 day'), "'+1 day");
+const flat = Array.from({ length: 30 }, (_, i) => ({ time: i, open: 5, high: 5, low: 5, close: 5, volume: 1 }));
+assert.equal(rsi.compute(flat).at(-1).value, 50, 'flat RSI is 50');
+const overnight = [bar('2026-11-24 19:45', 100, 100.2, 99.8, 100), bar('2026-11-25 04:00', 103, 103.5, 102.8, 103.2), bar('2026-11-25 04:15', 103.2, 104, 103, 103.8)];
+assert.equal(fairValueGaps(overnight).length, 0, 'no fast-move gap across the overnight break');
+const sameDay = [bar('2026-11-25 10:00', 100, 100.2, 99.8, 100), bar('2026-11-25 10:15', 100.2, 103, 100.1, 102.9), bar('2026-11-25 10:30', 103, 103.5, 102.8, 103.2)];
+assert.equal(fairValueGaps(sameDay).length, 1);
+const tr = Array.from({ length: 40 }, (_, i) => ({ time: i, open: 100, high: 100 + (i < 20 ? 1 : 3), low: 100 - (i < 20 ? 1 : 3), close: 100, volume: 1 }));
+assert.ok(atr(tr) > 5 && atr(tr) < 6, 'Wilder ATR lags a jump in range (plain 14-day mean would read 6)');
 
 console.log('unit checks passed');
